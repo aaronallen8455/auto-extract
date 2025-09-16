@@ -16,7 +16,6 @@ import qualified Data.Char as Char
 import           Data.Foldable
 import qualified Data.Generics as Syb
 import           Data.IORef
-import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified GHC.Paths as Paths
 import qualified Language.Haskell.GHC.ExactPrint as EP
@@ -36,13 +35,12 @@ type ExtractedDecls = Map.Map BS.ByteString Extraction
 data Extraction = Extraction
   { argNames :: [Ghc.OccName]
   , extractedType :: Maybe (Ghc.HsType Ghc.GhcPs)
-  -- , extractedName :: Ghc.OccName
   }
 
 updateHscEnv :: Ghc.HscEnv -> IO Ghc.HscEnv
 updateHscEnv hscEnv = do
   hasExtractRef <- newIORef False
-  extractedNamesRef <- newIORef Map.empty -- Ghc.emptyNameSet
+  extractedNamesRef <- newIORef Map.empty
   let innerPlugin = Ghc.defaultPlugin
         { Ghc.parsedResultAction = \_ _ result -> do
             hasExtract <- liftIO $ readIORef hasExtractRef
@@ -59,16 +57,14 @@ updateHscEnv hscEnv = do
             else pure (gblEnv, grp)
         , Ghc.typeCheckResultAction = \_ modSum gblEnv -> do
             extractedNames <- liftIO $ readIORef extractedNamesRef
-            ids <- traverse Ghc.tcLookupId $ Map.keys extractedNames
-            dynFlags <- Ghc.getDynFlags
-            liftIO $ putStrLn $ Ghc.showSDocUnsafe $ Ghc.ppr extractedNames
+            let dynFlags = Ghc.ms_hspp_opts modSum `Ghc.gopt_set` Ghc.Opt_KeepRawTokenStream
             extractionParams <- Map.mapKeys (Ghc.bytesFS . Ghc.occNameFS . Ghc.occName) <$>
               Map.traverseWithKey
                 (\nm args -> do
                   ty <- Ghc.idType <$> Ghc.tcLookupId nm
                   -- Converting Type to HsType would be tedious so instead we
                   -- pretty print the Type and run it through the type parser.
-                  let tySDoc = Ghc.ppr ty
+                  let tySDoc = Ghc.pprSigmaType ty
                       sdocCtxt = Ghc.initDefaultSDocContext dynFlags
                       tyStr = Ghc.renderWithContext sdocCtxt tySDoc
                       mHsTy = either (const Nothing) Just
@@ -211,17 +207,13 @@ performExtractions gblEnv grp =
     bndExtract
       :: (Ghc.RecFlag, Ghc.LHsBinds Ghc.GhcRn)
       -> ((Ghc.RecFlag, Ghc.LHsBinds Ghc.GhcRn), [(Ghc.Name, [Ghc.Name])])
-    bndExtract (recFlag, bnds) =
+    bndExtract (_, bnds) =
       let (newBnds, newNames) = foldMap extract bnds
        in ((Ghc.Recursive, newBnds), newNames)
 
     extract :: Ghc.LHsBind Ghc.GhcRn -> ([Ghc.LHsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])])
     extract (Ghc.L loc bind) =
-      let bindName = case bind of
-            Ghc.FunBind _ n _ -> Just $ Ghc.unLoc n
-            -- Ghc.PatBind -> _ TODO does this need to be handled?
-            _ -> Nothing
-          ((newBinds, newNames), updated) = Syb.everywhereM (Syb.mkM go) bind
+      let ((newBinds, newNames), updated) = Syb.everywhereM (Syb.mkM go) bind
           -- TODO use CPS writer
           go :: Ghc.HsExpr Ghc.GhcRn
              -> (([Ghc.HsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])]), Ghc.HsExpr Ghc.GhcRn)
@@ -230,7 +222,7 @@ performExtractions gblEnv grp =
                   (Ghc.HsValBinds _
                      (Ghc.XValBindsLR
                        (Ghc.NValBinds
-                         [ ( recFlag
+                         [ ( _recFlag
                            , [ Ghc.L _
                                (Ghc.FunBind freeVars (Ghc.L _ bndName)
                                  (Ghc.MG Ghc.FromSource

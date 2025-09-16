@@ -6,7 +6,6 @@ module AutoExtract.GhcFacade
   ) where
 
 import           GHC.Driver.Plugins as Ghc
-import           GHC.Hs.Binds as Ghc
 import           GHC as Ghc
 import           GHC.Utils.Outputable as Ghc
 import           GHC.Data.StringBuffer as Ghc
@@ -24,9 +23,9 @@ import           GHC.Types.Basic as Ghc
 import           GHC.Tc.Types as Ghc (TcGblEnv(..))
 import           GHC.Types.Name.Set as Ghc
 import           GHC.Data.FastString as Ghc
-import           GHC.Types.Unique.Set as Ghc
 import           GHC.Tc.Utils.Env as Ghc
 import           GHC.Driver.DynFlags as Ghc
+import           GHC.Core.TyCo.Ppr as Ghc
 
 import qualified Language.Haskell.GHC.ExactPrint as EP
 
