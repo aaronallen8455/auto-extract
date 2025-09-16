@@ -25,7 +25,8 @@ library
                       ghc,
                       containers,
                       syb,
-                      bytestring
+                      bytestring,
+                      ghc-exactprint
     hs-source-dirs:   src
     default-language: GHC2021
 

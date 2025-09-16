@@ -22,3 +22,5 @@ import           GHC.Tc.Types as Ghc (TcGblEnv(..))
 import           GHC.Types.Name.Set as Ghc
 import           GHC.Data.FastString as Ghc
 import           GHC.Types.Unique.Set as Ghc
+import           GHC.Tc.Utils.Env as Ghc
+import           GHC.Driver.DynFlags as Ghc
