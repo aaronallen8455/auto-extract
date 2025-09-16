@@ -18,7 +18,10 @@ import qualified Data.Generics as Syb
 import           Data.IORef
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
+import qualified GHC.Paths as Paths
+import qualified Language.Haskell.GHC.ExactPrint as EP
 import qualified Language.Haskell.GHC.ExactPrint.Parsers as EP
+import qualified Language.Haskell.GHC.ExactPrint.Utils as EP
 
 import qualified AutoExtract.GhcFacade as Ghc
 
@@ -28,7 +31,7 @@ plugin = Ghc.defaultPlugin
   , Ghc.driverPlugin = \_opts env -> updateHscEnv env
   }
 
-type ExtractedDecls = Map.Map Ghc.OccName Extraction
+type ExtractedDecls = Map.Map BS.ByteString Extraction
 
 data Extraction = Extraction
   { argNames :: [Ghc.OccName]
@@ -54,17 +57,17 @@ updateHscEnv hscEnv = do
               liftIO $ modifyIORef extractedNamesRef (Map.union (Map.fromList newNames))
               pure (gblEnv, newGrp)
             else pure (gblEnv, grp)
-        , Ghc.typeCheckResultAction = \_ _ gblEnv -> do
+        , Ghc.typeCheckResultAction = \_ modSum gblEnv -> do
             extractedNames <- liftIO $ readIORef extractedNamesRef
-            liftIO $ putStrLn $ Ghc.showSDocUnsafe $ Ghc.ppr extractedNames
-            liftIO $ putStrLn $ Ghc.showSDocUnsafe $ Ghc.ppr $ Ghc.tcg_binds gblEnv
             ids <- traverse Ghc.tcLookupId $ Map.keys extractedNames
-            liftIO $ putStrLn $ Ghc.showSDocUnsafe $ Ghc.ppr (Ghc.idType <$> ids)
             dynFlags <- Ghc.getDynFlags
-            extractionParams <-
+            liftIO $ putStrLn $ Ghc.showSDocUnsafe $ Ghc.ppr extractedNames
+            extractionParams <- Map.mapKeys (Ghc.bytesFS . Ghc.occNameFS . Ghc.occName) <$>
               Map.traverseWithKey
                 (\nm args -> do
                   ty <- Ghc.idType <$> Ghc.tcLookupId nm
+                  -- Converting Type to HsType would be tedious so instead we
+                  -- pretty print the Type and run it through the type parser.
                   let tySDoc = Ghc.ppr ty
                       sdocCtxt = Ghc.initDefaultSDocContext dynFlags
                       tyStr = Ghc.renderWithContext sdocCtxt tySDoc
@@ -77,38 +80,16 @@ updateHscEnv hscEnv = do
                 )
                 extractedNames
 
-            -- At this point all the information needed to modify the source
-            -- should be at hand.
-            -- Attempting to pretty print the AST as is would not work for various
-            -- reasons, so firstly need to parse the AST from the source file.
-            -- Then need to:
-            -- 1) replace the decl that was extracted from with the corresponding
-            -- decl from the TC AST. Problem: this necesitates turning a TC AST
-            -- into a PS AST. Can make this easier with a surgical approach
-            --  - Syb over the PS AST finding occurrences of EXTRACT
-            --    - Because the src won't parse as is, need to first do a pass
-            --      that converts EXTRACT@foo to EXTRACT foo
-            --  - perhaps when doing that replace, can have the printed callsite
-            --    from the TC AST on hand in a Map and simply replace it at that
-            --    point. No because knowing the scope of the body is problematic.
-            --  - after doing the replace, parse the AST
-            --  - Syb over the PS AST and when EXTRACT app is encountered, lookup
-            --    corresponding expr from the TC AST (will need to build a map)
-            --    and graft it in, doing whatever conversions are necessary.
-            --  - Will need to know what extracts are from which decls so that
-            --    they can be inserted directly after that decl.
-            --  - Insert the extract expr and synthesized sig into the PS AST.
-            --    This is problematic because again a TC AST must be converted
-            --    to a PS AST.
-            --  - hold up, no such conversion should be necessary beyond the
-            --    callsite one. Instead, use the App constructor from the PS
-            --    AST to get the body expr.
-            --  - Have the ordered list of arguments on hand. This can be used
-            --    both for modifying the call site and adding the decl in the
-            --    PS AST.
-            --  - Therefore the input to src modification should be
-            --    a map from name to arg names and inferred type
-            pure gblEnv
+            case Ghc.ml_hs_file (Ghc.ms_location modSum) of
+              Nothing -> pure gblEnv -- TODO throw error
+              Just filePath -> do
+                liftIO $ prepareSourceForParsing filePath
+                parseResult <- liftIO $ parseModule hscEnv dynFlags filePath
+                case parseResult of
+                  (Right parsedMod, usesCpp) -> do
+                    liftIO $ modifyModule parsedMod usesCpp extractionParams filePath
+                    pure gblEnv -- TODO throw error
+                  (Left _, _) -> pure gblEnv -- TODO throw error
         }
   let staticPlugin = Ghc.StaticPlugin
         { Ghc.spPlugin = Ghc.PluginWithArgs innerPlugin []
@@ -320,41 +301,104 @@ modifyParsedDecls extrDecls = foldMap go
     extract = \case
       Ghc.HsApp _ (Ghc.L _ (Ghc.HsVar _ (Ghc.L _ n))) body
         | Just realName <- BS.stripSuffix "_EXTRACT" . Ghc.bytesFS . Ghc.occNameFS $ Ghc.occName n
-        , Just inputs <- Map.lookup (Ghc.occName n) extrDecls
+        , Just inputs <- Map.lookup realName extrDecls
         , let rdrName = Ghc.mkRdrUnqual . Ghc.mkVarOccFS $ Ghc.mkFastStringByteString realName
-              arNames = Ghc.L Ghc.noSrcSpanA . Ghc.mkRdrUnqual <$> argNames inputs
+              arNames = Ghc.L Ghc.anchorD1 . Ghc.mkRdrUnqual <$> argNames inputs
               callsite = foldl'
                 (\acc arg ->
                   Ghc.HsApp
                     Ghc.noExtField
                     (Ghc.noLocA acc)
-                    (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField arg)
+                    (Ghc.L Ghc.noAnn $ Ghc.HsVar Ghc.noExtField arg)
                 )
                 (Ghc.HsVar Ghc.noExtField $ Ghc.noLocA rdrName)
                 arNames
               grhss :: Ghc.GRHSs Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
               grhss = Ghc.GRHSs Ghc.emptyComments
-                        [Ghc.noLocA $ Ghc.GRHS Ghc.noSrcSpanA [] body]
+                        [Ghc.noLocA $ Ghc.GRHS
+                          (Ghc.EpAnn EP.d0
+                            (Ghc.GrhsAnn Nothing (Left (Ghc.EpTok EP.d1)))
+                            Ghc.emptyComments
+                          )
+                          []
+                          body
+                        ]
                         (Ghc.EmptyLocalBinds Ghc.noExtField)
-              newDecl = Ghc.L Ghc.noSrcSpanA $
+              newDecl = Ghc.L (Ghc.diffLine 1 0) $
                 Ghc.ValD Ghc.noExtField $ Ghc.FunBind Ghc.noExtField (Ghc.noLocA rdrName) $
                   Ghc.MG Ghc.FromSource
                     (Ghc.L Ghc.noSrcSpanA
-                      [Ghc.noLocA $ Ghc.Match
+                      [Ghc.L Ghc.noAnn $ Ghc.Match
                         Ghc.noExtField
                         (Ghc.FunRhs (Ghc.noLocA rdrName) Ghc.Prefix Ghc.SrcLazy Ghc.noAnn)
-                        (Ghc.noLocA $ Ghc.noLocA . Ghc.VarPat Ghc.noExtField <$> arNames)
+                        (Ghc.noLocA $ Ghc.L (Ghc.diffLine 0 1) . Ghc.VarPat Ghc.noExtField <$> arNames)
                         grhss
                       ]
                     )
               mSig :: Maybe (Ghc.LHsDecl Ghc.GhcPs)
               mSig = do
                 hsType <- extractedType inputs
-                Just $ Ghc.L Ghc.noSrcSpanA $ Ghc.SigD Ghc.noExtField $
+                Just $ Ghc.L (Ghc.diffLine 2 0) $ Ghc.SigD Ghc.noExtField $
                   Ghc.TypeSig
-                      (Ghc.AnnSig (Ghc.EpUniTok Ghc.noSpanAnchor Ghc.NormalSyntax) Nothing Nothing)
+                      (Ghc.AnnSig (Ghc.EpUniTok EP.d1 Ghc.NormalSyntax) Nothing Nothing)
                       [Ghc.noLocA rdrName] $
-                    Ghc.HsWC Ghc.noExtField $ Ghc.noLocA $
+                    Ghc.HsWC Ghc.noExtField $ Ghc.L Ghc.anchorD1 $
                       Ghc.HsSig Ghc.noExtField Ghc.mkHsOuterImplicit (Ghc.noLocA hsType)
         -> (maybe id (:) mSig [newDecl], callsite)
       x -> (mempty, x)
+
+-- | Parse the given module file. Accounts for CPP comments
+parseModule
+  :: Ghc.HscEnv
+  -> Ghc.DynFlags
+  -> FilePath
+  -> IO (EP.ParseResult Ghc.ParsedSource, Bool)
+parseModule env dynFlags filePath = EP.ghcWrapper Paths.libdir $ do
+  Ghc.setSession env { Ghc.hsc_dflags = dynFlags }
+  res <- EP.parseModuleEpAnnsWithCppInternal EP.defaultCppOptions dynFlags filePath
+  let eCppComments = fmap (\(c, _, _) -> c) res
+      hasCpp = case eCppComments of
+                 Right cs -> not $ null cs
+                 _ -> False
+  pure
+    ( liftA2 EP.insertCppComments
+        (EP.postParseTransform res)
+        eCppComments
+    , hasCpp
+    )
+
+prepareSourceForParsing
+  :: FilePath
+  -> IO ()
+prepareSourceForParsing filePath = do
+  content <- BS.readFile filePath
+  let update bs =
+        case BS.breakSubstring "EXTRACT@" bs of
+          (before, "") -> before
+          (before, match) ->
+            let name = BS8.takeWhile (not . Char.isSpace) $ BS.drop 8 match
+                rest = BS.drop (8 + BS.length name) match
+                expr = name <> "_EXTRACT"
+            in before <> expr <> update rest
+  BS.writeFile filePath (update content)
+
+modifyModule
+  :: Ghc.ParsedSource
+  -> Bool
+  -> ExtractedDecls
+  -> FilePath
+  -> IO ()
+modifyModule parsedMod usesCpp extractedDecls filePath = do
+  let ast = EP.makeDeltaAst parsedMod
+      updatedDecls = modifyParsedDecls extractedDecls (EP.hsDecls ast)
+      updatedMod = (\m -> m {Ghc.hsmodDecls = updatedDecls}) <$> parsedMod
+  -- If the source contains CPP, newlines are appended
+  -- to the end of the file when exact printing. The simple
+  -- solution is to remove trailing newlines after exact printing
+  -- if the source contains CPP comments.
+  let removeTrailingNewlines
+        | usesCpp =
+            reverse . ('\n' :) . dropWhile (== '\n') . reverse
+        | otherwise = id
+      printed = removeTrailingNewlines $ EP.exactPrint updatedMod
+  writeFile filePath printed
