@@ -1,7 +1,8 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE CPP #-}
 module AutoExtract
   ( plugin
   ) where
@@ -17,6 +18,8 @@ import           Data.Foldable
 import qualified Data.Generics as Syb
 import           Data.IORef
 import qualified Data.Map.Strict as Map
+import           Data.Maybe
+import           Data.String
 import qualified GHC.Paths as Paths
 import qualified Language.Haskell.GHC.ExactPrint as EP
 import qualified Language.Haskell.GHC.ExactPrint.Parsers as EP
@@ -39,67 +42,11 @@ data Extraction = Extraction
 
 updateHscEnv :: Ghc.HscEnv -> IO Ghc.HscEnv
 updateHscEnv hscEnv = do
-  hasExtractRef <- newIORef False
-  extractedNamesRef <- newIORef Map.empty
-  let innerPlugin = Ghc.defaultPlugin
-        { Ghc.parsedResultAction = \_ _ result -> do
-            hasExtract <- liftIO $ readIORef hasExtractRef
-            if hasExtract
-            then pure $ rewriteToLet result
-            else pure result
-        , Ghc.renamedResultAction = \_ gblEnv grp -> do
-            hasExtract <- liftIO $ readIORef hasExtractRef
-            if hasExtract
-            then do
-              let (newNames, newGrp) = performExtractions gblEnv grp
-              liftIO $ modifyIORef extractedNamesRef (Map.union (Map.fromList newNames))
-              pure (gblEnv, newGrp)
-            else pure (gblEnv, grp)
-        , Ghc.typeCheckResultAction = \_ modSum gblEnv -> do
-            extractedNames <- liftIO $ readIORef extractedNamesRef
-            let dynFlags = Ghc.ms_hspp_opts modSum `Ghc.gopt_set` Ghc.Opt_KeepRawTokenStream
-            extractionParams <- Map.mapKeys (Ghc.bytesFS . Ghc.occNameFS . Ghc.occName) <$>
-              Map.traverseWithKey
-                (\nm args -> do
-                  ty <- Ghc.idType <$> Ghc.tcLookupId nm
-                  -- Converting Type to HsType would be tedious so instead we
-                  -- pretty print the Type and run it through the type parser.
-                  let tySDoc = Ghc.pprSigmaType ty
-                      sdocCtxt = Ghc.initDefaultSDocContext dynFlags
-                      tyStr = Ghc.renderWithContext sdocCtxt tySDoc
-                      mHsTy = either (const Nothing) Just
-                            $ EP.parseType dynFlags "" tyStr
-                  pure Extraction
-                    { argNames = Ghc.occName <$> args
-                    , extractedType = Ghc.unLoc <$> mHsTy
-                    }
-                )
-                extractedNames
-
-            case Ghc.ml_hs_file (Ghc.ms_location modSum) of
-              Nothing -> pure gblEnv -- TODO throw error
-              Just filePath -> do
-                liftIO $ prepareSourceForParsing filePath
-                parseResult <- liftIO $ parseModule hscEnv dynFlags filePath
-                case parseResult of
-                  (Right parsedMod, usesCpp) -> do
-                    liftIO $ modifyModule parsedMod usesCpp extractionParams filePath
-                    pure gblEnv -- TODO throw error
-                  (Left _, _) -> pure gblEnv -- TODO throw error
-        }
-  let staticPlugin = Ghc.StaticPlugin
-        { Ghc.spPlugin = Ghc.PluginWithArgs innerPlugin []
-        , Ghc.spInitialised = True
-        }
   pure hscEnv
-    { Ghc.hsc_hooks = (Ghc.hsc_hooks hscEnv) { Ghc.runPhaseHook = Just $ installHooks hasExtractRef }
-    , Ghc.hsc_plugins = let plugins = Ghc.hsc_plugins hscEnv in plugins
-      { Ghc.staticPlugins = staticPlugin : Ghc.staticPlugins plugins
-      }
-    }
+    { Ghc.hsc_hooks = (Ghc.hsc_hooks hscEnv) { Ghc.runPhaseHook = Just installHooks } }
   where
-    installHooks :: IORef Bool -> Ghc.PhaseHook
-    installHooks hasExtractRef = Ghc.PhaseHook $ \phase -> case phase of
+    installHooks :: Ghc.PhaseHook
+    installHooks = Ghc.PhaseHook $ \phase -> case phase of
       Ghc.T_Hsc env modSum -> catch (runPhaseOrExistingHook phase)
         (\(Ghc.SourceError msgs) ->
           case any atParseErr $ Ghc.getMessages msgs of
@@ -107,8 +54,60 @@ updateHscEnv hscEnv = do
               -> do
               let updatedModSum = modSum { Ghc.ms_hspp_buf = Just updatedBuffer }
               -- Set a ref indicating this module has an extraction
-              writeIORef hasExtractRef True
-              runPhaseOrExistingHook (Ghc.T_Hsc env updatedModSum)
+              extractedNamesRef <- newIORef Map.empty
+              let innerPlugin = Ghc.defaultPlugin
+                    { Ghc.parsedResultAction = \_ _ result -> do
+                        pure $ rewriteToLet result
+                    , Ghc.renamedResultAction = \_ gblEnv grp -> do
+                        let (newNames, newGrp) = performExtractions gblEnv grp
+                        liftIO $ modifyIORef extractedNamesRef (Map.union (Map.fromList newNames))
+                        pure (gblEnv, newGrp)
+                    , Ghc.typeCheckResultAction = \_ tcModSum gblEnv -> do
+                        extractedNames <- liftIO $ readIORef extractedNamesRef
+                        let dynFlags = Ghc.ms_hspp_opts tcModSum `Ghc.gopt_set` Ghc.Opt_KeepRawTokenStream
+                        extractionParams <- Map.mapKeys (Ghc.bytesFS . Ghc.occNameFS . Ghc.occName) <$>
+                          Map.traverseWithKey
+                            (\nm args -> do
+                              ty <- Ghc.idType <$> Ghc.tcLookupId nm
+                              -- Converting Type to HsType would be tedious so instead we
+                              -- pretty print the Type and run it through the type parser.
+                              let tySDoc = Ghc.pprSigmaType ty
+                                  sdocCtxt = Ghc.initDefaultSDocContext dynFlags
+                                  tyStr = Ghc.renderWithContext sdocCtxt tySDoc
+                                  mHsTy = either (const Nothing) Just
+                                        $ EP.parseType dynFlags "" tyStr
+                              pure Extraction
+                                { argNames = Ghc.occName <$> args
+                                , extractedType = Ghc.unLoc <$> mHsTy
+                                }
+                            )
+                            extractedNames
+                        let extractErr =
+                              let fn = fromMaybe "<UNKNOWN>" $ Ghc.ml_hs_file (Ghc.ms_location tcModSum)
+                               in Ghc.mkPlainErrorMsgEnvelope
+                                    (Ghc.mkGeneralSrcSpan $ fromString fn)
+                                    (Ghc.ghcUnknownMessage ExtractDiag)
+
+                        case Ghc.ml_hs_file (Ghc.ms_location tcModSum) of
+                          Nothing -> pure gblEnv
+                          Just filePath -> do
+                            liftIO $ prepareSourceForParsing filePath
+                            parseResult <- liftIO $ parseModule hscEnv dynFlags filePath
+                            case parseResult of
+                              (Right parsedMod, usesCpp) ->
+                                liftIO $ modifyModule parsedMod usesCpp extractionParams filePath
+                              (Left _, _) -> pure ()
+                            Ghc.throwOneError extractErr
+                    }
+              let staticPlugin = Ghc.StaticPlugin
+                    { Ghc.spPlugin = Ghc.PluginWithArgs innerPlugin []
+                    , Ghc.spInitialised = True
+                    }
+                  newEnv = env
+                    { Ghc.hsc_plugins = let plugins = Ghc.hsc_plugins hscEnv in plugins
+                      { Ghc.staticPlugins = staticPlugin : Ghc.staticPlugins plugins }
+                    }
+              runPhaseOrExistingHook (Ghc.T_Hsc newEnv updatedModSum)
             _ -> throw $ Ghc.SourceError msgs
         )
       _ -> runPhaseOrExistingHook phase
@@ -252,7 +251,8 @@ performExtractions gblEnv grp =
                     | Just occNameBS <- BS.stripSuffix "_EXTRACT" . Ghc.bytesFS . Ghc.occNameFS $ Ghc.occName bndName
                     -> let args = Ghc.nameSetElemsStable
                                 $ freeVars `Ghc.minusNameSet` topLevelNames
-                           topLvlName = Ghc.mkExternalName (Ghc.nameUnique bndName) (Ghc.tcg_mod gblEnv) (Ghc.mkVarOccFS $ Ghc.mkFastStringByteString occNameBS) Ghc.noSrcSpan
+                           topLvlName = Ghc.tidyNameOcc bndName (Ghc.mkVarOccFS $ Ghc.mkFastStringByteString occNameBS)
+                             -- Ghc.mkExternalName (Ghc.nameUnique bndName) (Ghc.tcg_mod gblEnv) (Ghc.mkVarOccFS $ Ghc.mkFastStringByteString occNameBS) Ghc.noSrcSpan
                            newBind =
                              Ghc.FunBind freeVars (Ghc.noLocA topLvlName) $
                                Ghc.MG Ghc.FromSource
@@ -383,7 +383,7 @@ modifyModule
 modifyModule parsedMod usesCpp extractedDecls filePath = do
   let ast = EP.makeDeltaAst parsedMod
       updatedDecls = modifyParsedDecls extractedDecls (EP.hsDecls ast)
-      updatedMod = (\m -> m {Ghc.hsmodDecls = updatedDecls}) <$> parsedMod
+      updatedMod = EP.replaceDecls ast updatedDecls
   -- If the source contains CPP, newlines are appended
   -- to the end of the file when exact printing. The simple
   -- solution is to remove trailing newlines after exact printing
@@ -394,3 +394,17 @@ modifyModule parsedMod usesCpp extractedDecls filePath = do
         | otherwise = id
       printed = removeTrailingNewlines $ EP.exactPrint updatedMod
   writeFile filePath printed
+
+-- | Diagnostic thrown when extraction occurs
+data ExtractDiag = ExtractDiag
+
+instance Ghc.Diagnostic ExtractDiag where
+  type DiagnosticOpts ExtractDiag = Ghc.NoDiagnosticOpts
+  diagnosticMessage _ _ = Ghc.mkSimpleDecorated $
+    Ghc.text "Module updated by auto-extract, compilation aborted"
+  diagnosticReason _ = Ghc.ErrorWithoutFlag
+  diagnosticHints _ = []
+  diagnosticCode _ = Nothing
+#if !MIN_VERSION_ghc(9,8,0)
+  defaultDiagnosticOpts = Ghc.NoDiagnosticOpts
+#endif

@@ -26,6 +26,8 @@ import           GHC.Data.FastString as Ghc
 import           GHC.Tc.Utils.Env as Ghc
 import           GHC.Driver.DynFlags as Ghc
 import           GHC.Core.TyCo.Ppr as Ghc
+import           GHC.Utils.Error as Ghc
+import           GHC.Types.SrcLoc as Ghc
 
 import qualified Language.Haskell.GHC.ExactPrint as EP
 
