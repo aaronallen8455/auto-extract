@@ -1,0 +1,12 @@
+module Case6 where
+
+test =
+  let y = 5
+      x = 3
+   in a x y
+
+b :: Num a => a -> a -> a -> a
+b x y z = x + y * z
+
+a :: Num a => a -> a -> a
+a x y = let z = 10 in y + b x y z

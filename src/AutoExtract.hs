@@ -292,7 +292,7 @@ performExtractions gblEnv grp =
 
                 x -> pure x
 
-       in (Ghc.L loc updated : (Ghc.noLocA <$> newBinds), newNames)
+       in (Ghc.L loc updated : (Ghc.noLocA <$> reverse newBinds), newNames)
 
     topLevelNames :: Ghc.NameSet
     topLevelNames = foldMap (fold . fst) $ Ghc.tcg_dus gblEnv

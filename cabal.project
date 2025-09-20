@@ -1,0 +1,3 @@
+packages:
+  auto-extract.cabal
+  test-modules/test-modules.cabal

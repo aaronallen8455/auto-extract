@@ -1,0 +1,10 @@
+module Case4 where
+
+test = do
+  x <- e
+  pure $ x + 3
+
+e :: IO Integer
+e = do
+  y <- readLn
+  pure (y + 1)

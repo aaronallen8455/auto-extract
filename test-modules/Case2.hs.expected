@@ -1,0 +1,6 @@
+module Case2 where
+
+test x = 1 + simple x
+
+simple :: Num a => a -> a
+simple x = x + 1

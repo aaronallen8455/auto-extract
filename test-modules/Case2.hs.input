@@ -1,0 +1,3 @@
+module Case2 where
+
+test x = 1 + EXTRACT@simple (x + 1)

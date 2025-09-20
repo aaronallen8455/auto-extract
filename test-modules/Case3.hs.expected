@@ -1,0 +1,8 @@
+module Case3 where
+
+z = 9
+
+test x = let y = 12 in 1 + simple x y
+
+simple :: Integer -> Integer -> Integer
+simple x y = x + 3 * y + z

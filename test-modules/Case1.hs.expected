@@ -1,0 +1,6 @@
+module Case1 where
+
+test = simple
+
+simple :: Bool
+simple = True

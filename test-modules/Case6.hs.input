@@ -1,0 +1,6 @@
+module Case6 where
+
+test =
+  let y = 5
+      x = 3
+   in EXTRACT@a (let z = 10 in y + EXTRACT@b (x + y * z))

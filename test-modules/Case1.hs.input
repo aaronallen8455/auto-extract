@@ -1,0 +1,3 @@
+module Case1 where
+
+test = EXTRACT@simple True

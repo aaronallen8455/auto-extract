@@ -1,0 +1,9 @@
+module Case5 where
+
+test = do
+  let m = getLine
+  EXTRACT@dup (do
+    a <- m
+    b <- m
+    pure (a <> b)
+    )

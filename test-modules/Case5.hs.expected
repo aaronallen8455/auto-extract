@@ -1,0 +1,11 @@
+module Case5 where
+
+test = do
+  let m = getLine
+  dup m
+
+dup :: (Monad m, Semigroup b) => m b -> m b
+dup m = do
+  a <- m
+  b <- m
+  pure (a <> b)

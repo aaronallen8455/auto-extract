@@ -1,0 +1,7 @@
+module Case4 where
+
+test = do
+  x <- EXTRACT@e (do
+    y <- readLn
+    pure (y + 1))
+  pure $ x + 3

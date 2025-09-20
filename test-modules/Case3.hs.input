@@ -1,0 +1,5 @@
+module Case3 where
+
+z = 9
+
+test x = let y = 12 in 1 + EXTRACT@simple (x + 3 * y + z)
