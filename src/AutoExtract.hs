@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE CPP #-}
 module AutoExtract
   ( plugin
@@ -65,7 +67,7 @@ updateHscEnv hscEnv = do
                     , Ghc.typeCheckResultAction = \_ tcModSum gblEnv -> do
                         extractedNames <- liftIO $ readIORef extractedNamesRef
                         let dynFlags = Ghc.ms_hspp_opts tcModSum `Ghc.gopt_set` Ghc.Opt_KeepRawTokenStream
-                        extractionParams <- Map.mapKeys (Ghc.bytesFS . Ghc.occNameFS . Ghc.occName) <$>
+                        extractionParams <- Map.mapKeys nameToBS <$>
                           Map.traverseWithKey
                             (\nm args -> do
                               ty <- Ghc.idType <$> Ghc.tcLookupId nm
@@ -123,7 +125,10 @@ updateHscEnv hscEnv = do
         _ -> False
 
 updateBuffer :: Ghc.StringBuffer -> Maybe Ghc.StringBuffer
-updateBuffer = fmap Ghc.stringBufferFromByteString . update False . stringBufferToBS
+updateBuffer = fmap Ghc.stringBufferFromByteString . rewriteRawExtract . stringBufferToBS
+
+rewriteRawExtract :: BS.ByteString -> Maybe BS.ByteString
+rewriteRawExtract = update False
   where
     update matchFound bs =
       case BS.breakSubstring "EXTRACT@" bs of
@@ -140,6 +145,24 @@ stringBufferToBS :: Ghc.StringBuffer -> BS.ByteString
 stringBufferToBS Ghc.StringBuffer {Ghc.buf = buf, Ghc.len = len} =
   BS.BS buf len
 
+pattern ExtractPat :: Ghc.FastString -> Ghc.LHsExpr Ghc.GhcPs -> Ghc.HsExpr Ghc.GhcPs
+pattern ExtractPat bnd body
+  <- Ghc.HsApp _
+       (Ghc.L _
+         (Ghc.HsApp _
+           (Ghc.L _ (Ghc.HsVar _ (Ghc.L _ (nameToBS -> "EXTRACT"))))
+           (Ghc.L _ (Ghc.HsLit _ (Ghc.HsString _ bnd)))
+         )
+       )
+       (removeParens -> body)
+
+removeParens :: Ghc.LHsExpr Ghc.GhcPs -> Ghc.LHsExpr Ghc.GhcPs
+removeParens (Ghc.L l (Ghc.HsPar _ (Ghc.L _ x))) = Ghc.L l x
+removeParens x = x
+
+nameToBS :: Ghc.HasOccName a => a -> BS.ByteString
+nameToBS = Ghc.bytesFS . Ghc.occNameFS . Ghc.occName
+
 rewriteToLet :: Ghc.ParsedResult -> Ghc.ParsedResult
 rewriteToLet result =
   let prm = Ghc.parsedResultModule result in result
@@ -151,43 +174,35 @@ rewriteToLet result =
     rewrite = Syb.everywhere $ Syb.mkT appCase
     appCase :: Ghc.HsExpr Ghc.GhcPs -> Ghc.HsExpr Ghc.GhcPs
     appCase = \case
-      -- TODO dollar application
-      Ghc.HsApp _
-        (Ghc.L _
-          (Ghc.HsApp _
-            (Ghc.L _ (Ghc.HsVar _ (Ghc.L _ v)))
-            (Ghc.L _ (Ghc.HsLit _ (Ghc.HsString _ bnd)))
-          )
-        )
-        body
-          | Ghc.occNameFS (Ghc.occName v) == "EXTRACT"
-          ->
-            let bndName = Ghc.mkVarUnqual $ bnd <> "_EXTRACT"
-                mg :: Ghc.MatchGroup Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
-                mg = Ghc.MG Ghc.FromSource
-                       (Ghc.L Ghc.noSrcSpanA
-                         [Ghc.noLocA $ Ghc.Match
-                           Ghc.noExtField
-                           (Ghc.FunRhs (Ghc.noLocA bndName) Ghc.Prefix Ghc.SrcLazy Ghc.noAnn)
-                           (Ghc.noLocA [])
-                           grhss
-                         ]
-                       )
-                grhss :: Ghc.GRHSs Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
-                grhss = Ghc.GRHSs Ghc.emptyComments
-                          [Ghc.noLocA $ Ghc.GRHS Ghc.noSrcSpanA [] body]
-                          (Ghc.EmptyLocalBinds Ghc.noExtField)
-                expr :: Ghc.HsExpr Ghc.GhcPs
-                expr = Ghc.HsLet Ghc.noAnn
-                  (Ghc.HsValBinds Ghc.noSrcSpanA
-                     (Ghc.ValBinds Ghc.NoAnnSortKey
-                        [ Ghc.noLocA $ Ghc.FunBind Ghc.noExtField (Ghc.noLocA bndName) mg ]
-                        []
-                     )
-                  )
-                  (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA bndName))
-             in expr
+      ExtractPat bnd body -> letExpr bnd body
       x -> x
+
+    letExpr bnd body =
+      let bndName = Ghc.mkVarUnqual $ bnd <> "_EXTRACT"
+          mg :: Ghc.MatchGroup Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
+          mg = Ghc.MG Ghc.FromSource
+                 (Ghc.L Ghc.noSrcSpanA
+                   [Ghc.noLocA $ Ghc.Match
+                     Ghc.noExtField
+                     (Ghc.FunRhs (Ghc.noLocA bndName) Ghc.Prefix Ghc.SrcLazy Ghc.noAnn)
+                     (Ghc.noLocA [])
+                     grhss
+                   ]
+                 )
+          grhss :: Ghc.GRHSs Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
+          grhss = Ghc.GRHSs Ghc.emptyComments
+                    [Ghc.noLocA $ Ghc.GRHS Ghc.noSrcSpanA [] body]
+                    (Ghc.EmptyLocalBinds Ghc.noExtField)
+          expr :: Ghc.HsExpr Ghc.GhcPs
+          expr = Ghc.HsLet Ghc.noAnn
+            (Ghc.HsValBinds Ghc.noSrcSpanA
+               (Ghc.ValBinds Ghc.NoAnnSortKey
+                  [ Ghc.noLocA $ Ghc.FunBind Ghc.noExtField (Ghc.noLocA bndName) mg ]
+                  []
+               )
+            )
+            (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA bndName))
+       in expr
 
 performExtractions
   :: Ghc.TcGblEnv
@@ -248,7 +263,7 @@ performExtractions gblEnv grp =
                      )
                   )
                   _
-                    | Just occNameBS <- BS.stripSuffix "_EXTRACT" . Ghc.bytesFS . Ghc.occNameFS $ Ghc.occName bndName
+                    | Just occNameBS <- BS.stripSuffix "_EXTRACT" $ nameToBS bndName
                     -> let args = Ghc.nameSetElemsStable
                                 $ freeVars `Ghc.minusNameSet` topLevelNames
                            topLvlName = Ghc.tidyNameOcc bndName (Ghc.mkVarOccFS $ Ghc.mkFastStringByteString occNameBS)
@@ -291,53 +306,55 @@ modifyParsedDecls extrDecls = foldMap go
        in updDecl : newDecls
     extract :: Ghc.HsExpr Ghc.GhcPs -> ([Ghc.LHsDecl Ghc.GhcPs], Ghc.HsExpr Ghc.GhcPs)
     extract = \case
-      Ghc.HsApp _ (Ghc.L _ (Ghc.HsVar _ (Ghc.L _ n))) body
-        | Just realName <- BS.stripSuffix "_EXTRACT" . Ghc.bytesFS . Ghc.occNameFS $ Ghc.occName n
-        , Just inputs <- Map.lookup realName extrDecls
-        , let rdrName = Ghc.mkRdrUnqual . Ghc.mkVarOccFS $ Ghc.mkFastStringByteString realName
-              arNames = Ghc.L Ghc.anchorD1 . Ghc.mkRdrUnqual <$> argNames inputs
-              callsite = foldl'
-                (\acc arg ->
-                  Ghc.HsApp
-                    Ghc.noExtField
-                    (Ghc.noLocA acc)
-                    (Ghc.L Ghc.noAnn $ Ghc.HsVar Ghc.noExtField arg)
-                )
-                (Ghc.HsVar Ghc.noExtField $ Ghc.noLocA rdrName)
-                arNames
-              grhss :: Ghc.GRHSs Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
-              grhss = Ghc.GRHSs Ghc.emptyComments
-                        [Ghc.noLocA $ Ghc.GRHS
-                          (Ghc.EpAnn EP.d0
-                            (Ghc.GrhsAnn Nothing (Left (Ghc.EpTok EP.d1)))
-                            Ghc.emptyComments
-                          )
-                          []
-                          body
-                        ]
-                        (Ghc.EmptyLocalBinds Ghc.noExtField)
-              newDecl = Ghc.L (Ghc.diffLine 1 0) $
-                Ghc.ValD Ghc.noExtField $ Ghc.FunBind Ghc.noExtField (Ghc.noLocA rdrName) $
-                  Ghc.MG Ghc.FromSource
-                    (Ghc.L Ghc.noSrcSpanA
-                      [Ghc.L Ghc.noAnn $ Ghc.Match
-                        Ghc.noExtField
-                        (Ghc.FunRhs (Ghc.noLocA rdrName) Ghc.Prefix Ghc.SrcLazy Ghc.noAnn)
-                        (Ghc.noLocA $ Ghc.L (Ghc.diffLine 0 1) . Ghc.VarPat Ghc.noExtField <$> arNames)
-                        grhss
-                      ]
-                    )
-              mSig :: Maybe (Ghc.LHsDecl Ghc.GhcPs)
-              mSig = do
-                hsType <- extractedType inputs
-                Just $ Ghc.L (Ghc.diffLine 2 0) $ Ghc.SigD Ghc.noExtField $
-                  Ghc.TypeSig
-                      (Ghc.AnnSig (Ghc.EpUniTok EP.d1 Ghc.NormalSyntax) Nothing Nothing)
-                      [Ghc.noLocA rdrName] $
-                    Ghc.HsWC Ghc.noExtField $ Ghc.L Ghc.anchorD1 $
-                      Ghc.HsSig Ghc.noExtField Ghc.mkHsOuterImplicit (Ghc.noLocA hsType)
-        -> (maybe id (:) mSig [newDecl], callsite)
+      ExtractPat bnd body
+        | Just inputs <- Map.lookup (Ghc.bytesFS bnd) extrDecls
+        -> decls bnd body inputs
       x -> (mempty, x)
+
+    decls bnd body inputs =
+      let rdrName = Ghc.mkRdrUnqual $ Ghc.mkVarOccFS bnd
+          arNames = Ghc.L Ghc.anchorD1 . Ghc.mkRdrUnqual <$> argNames inputs
+          callsite = foldl'
+            (\acc arg ->
+              Ghc.HsApp
+                Ghc.noExtField
+                (Ghc.noLocA acc)
+                (Ghc.L Ghc.noAnn $ Ghc.HsVar Ghc.noExtField arg)
+            )
+            (Ghc.HsVar Ghc.noExtField $ Ghc.noLocA rdrName)
+            arNames
+          grhss :: Ghc.GRHSs Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
+          grhss = Ghc.GRHSs Ghc.emptyComments
+                    [Ghc.noLocA $ Ghc.GRHS
+                      (Ghc.EpAnn EP.d0
+                        (Ghc.GrhsAnn Nothing (Left (Ghc.EpTok EP.d1)))
+                        Ghc.emptyComments
+                      )
+                      []
+                      body -- TODO remove parens?
+                    ]
+                    (Ghc.EmptyLocalBinds Ghc.noExtField)
+          newDecl = Ghc.L (Ghc.diffLine 1 0) $
+            Ghc.ValD Ghc.noExtField $ Ghc.FunBind Ghc.noExtField (Ghc.noLocA rdrName) $
+              Ghc.MG Ghc.FromSource
+                (Ghc.L Ghc.noSrcSpanA
+                  [Ghc.L Ghc.noAnn $ Ghc.Match
+                    Ghc.noExtField
+                    (Ghc.FunRhs (Ghc.noLocA rdrName) Ghc.Prefix Ghc.SrcLazy Ghc.noAnn)
+                    (Ghc.noLocA $ Ghc.L (Ghc.diffLine 0 1) . Ghc.VarPat Ghc.noExtField <$> arNames)
+                    grhss
+                  ]
+                )
+          mSig :: Maybe (Ghc.LHsDecl Ghc.GhcPs)
+          mSig = do
+            hsType <- extractedType inputs
+            Just $ Ghc.L (Ghc.diffLine 2 0) $ Ghc.SigD Ghc.noExtField $
+              Ghc.TypeSig
+                  (Ghc.AnnSig (Ghc.EpUniTok EP.d1 Ghc.NormalSyntax) Nothing Nothing)
+                  [Ghc.noLocA rdrName] $
+                Ghc.HsWC Ghc.noExtField $ Ghc.L Ghc.anchorD1 $
+                  Ghc.HsSig Ghc.noExtField Ghc.mkHsOuterImplicit (Ghc.noLocA hsType)
+       in (maybe id (:) mSig [newDecl], callsite)
 
 -- | Parse the given module file. Accounts for CPP comments
 parseModule
@@ -364,15 +381,7 @@ prepareSourceForParsing
   -> IO ()
 prepareSourceForParsing filePath = do
   content <- BS.readFile filePath
-  let update bs =
-        case BS.breakSubstring "EXTRACT@" bs of
-          (before, "") -> before
-          (before, match) ->
-            let name = BS8.takeWhile (not . Char.isSpace) $ BS.drop 8 match
-                rest = BS.drop (8 + BS.length name) match
-                expr = name <> "_EXTRACT"
-            in before <> expr <> update rest
-  BS.writeFile filePath (update content)
+  traverse_ (BS.writeFile filePath) (rewriteRawExtract content)
 
 modifyModule
   :: Ghc.ParsedSource
