@@ -36,3 +36,7 @@ executable Case5
 executable Case6
     import: attrs
     main-is: Case6.hs
+
+executable Case7
+    import: attrs
+    main-is: Case7.hs

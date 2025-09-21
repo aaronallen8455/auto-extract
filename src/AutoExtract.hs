@@ -11,6 +11,7 @@ module AutoExtract
 
 import           Control.Monad (guard)
 import           Control.Monad.IO.Class (liftIO)
+import qualified Control.Monad.Trans.Writer.CPS as W
 import           Control.Exception (catch, throw)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -61,10 +62,12 @@ updateHscEnv hscEnv = do
                     { Ghc.parsedResultAction = \_ _ result -> do
                         pure $ rewriteToLet result
                     , Ghc.renamedResultAction = \_ gblEnv grp -> do
+                        liftIO $ putStrLn "RENAMER COMPLETED"
                         let (newNames, newGrp) = performExtractions gblEnv grp
                         liftIO $ modifyIORef extractedNamesRef (Map.union (Map.fromList newNames))
                         pure (gblEnv, newGrp)
                     , Ghc.typeCheckResultAction = \_ tcModSum gblEnv -> do
+                        liftIO $ putStrLn "TC COMPLETED"
                         extractedNames <- liftIO $ readIORef extractedNamesRef
                         let dynFlags = Ghc.ms_hspp_opts tcModSum `Ghc.gopt_set` Ghc.Opt_KeepRawTokenStream
                         extractionParams <- Map.mapKeys nameToBS <$>
@@ -227,10 +230,9 @@ performExtractions gblEnv grp =
 
     extract :: Ghc.LHsBind Ghc.GhcRn -> ([Ghc.LHsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])])
     extract (Ghc.L loc bind) =
-      let ((newBinds, newNames), updated) = Syb.everywhereM (Syb.mkM go) bind
-          -- TODO use CPS writer
+      let (updated, (newBinds, newNames)) = W.runWriter $ Syb.everywhereM (Syb.mkM go) bind
           go :: Ghc.HsExpr Ghc.GhcRn
-             -> (([Ghc.HsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])]), Ghc.HsExpr Ghc.GhcRn)
+             -> W.Writer ([Ghc.HsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])]) (Ghc.HsExpr Ghc.GhcRn)
           go = \case
                 Ghc.HsLet _
                   (Ghc.HsValBinds _
@@ -288,7 +290,7 @@ performExtractions gblEnv grp =
                                    (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA arg)))
                                (Ghc.HsVar Ghc.noExtField (Ghc.noLocA topLvlName))
                                args
-                        in (([newBind], [(topLvlName, args)]), newExpr)
+                        in W.writer (newExpr, ([newBind], [(topLvlName, args)]))
 
                 x -> pure x
 
@@ -302,14 +304,14 @@ modifyParsedDecls :: ExtractedDecls -> [Ghc.LHsDecl Ghc.GhcPs] -> [Ghc.LHsDecl G
 modifyParsedDecls extrDecls = foldMap go
   where
     go decl =
-      let (newDecls, updDecl) = Syb.everywhereM (Syb.mkM extract) decl
+      let (updDecl, newDecls) = W.runWriter $ Syb.everywhereM (Syb.mkM extract) decl
        in updDecl : newDecls
-    extract :: Ghc.HsExpr Ghc.GhcPs -> ([Ghc.LHsDecl Ghc.GhcPs], Ghc.HsExpr Ghc.GhcPs)
+    extract :: Ghc.HsExpr Ghc.GhcPs -> W.Writer [Ghc.LHsDecl Ghc.GhcPs] (Ghc.HsExpr Ghc.GhcPs)
     extract = \case
       ExtractPat bnd body
         | Just inputs <- Map.lookup (Ghc.bytesFS bnd) extrDecls
         -> decls bnd body inputs
-      x -> (mempty, x)
+      x -> pure x
 
     decls bnd body inputs =
       let rdrName = Ghc.mkRdrUnqual $ Ghc.mkVarOccFS bnd
@@ -354,7 +356,7 @@ modifyParsedDecls extrDecls = foldMap go
                   [Ghc.noLocA rdrName] $
                 Ghc.HsWC Ghc.noExtField $ Ghc.L Ghc.anchorD1 $
                   Ghc.HsSig Ghc.noExtField Ghc.mkHsOuterImplicit (Ghc.noLocA hsType)
-       in (maybe id (:) mSig [newDecl], callsite)
+       in W.writer (callsite, maybe id (:) mSig [newDecl])
 
 -- | Parse the given module file. Accounts for CPP comments
 parseModule

@@ -24,7 +24,8 @@ library
                       syb,
                       bytestring,
                       ghc-exactprint,
-                      ghc-paths
+                      ghc-paths,
+                      transformers
     hs-source-dirs:   src
     default-language: GHC2021
 

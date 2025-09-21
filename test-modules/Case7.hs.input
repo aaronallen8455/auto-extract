@@ -1,0 +1,7 @@
+module Case7 where
+
+test :: Int
+test =
+  let y = 5
+      x = 3
+   in EXTRACT@a (let z = 10 in test + EXTRACT@b (x + y * z))
