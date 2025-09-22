@@ -1,0 +1,15 @@
+module Case9 where
+
+z :: Integer
+z = 9
+
+test =
+  let y = 5
+      x = 3
+      k = 3
+      l = 2
+      i = 9
+      h = 20
+      g = 21
+      j = 8
+   in EXTRACT@a (x + y * z + k + l + i + h + g + j)

@@ -75,7 +75,8 @@ updateHscEnv hscEnv = do
                               -- Converting Type to HsType would be tedious so instead we
                               -- pretty print the Type and run it through the type parser.
                               let tySDoc = Ghc.pprSigmaType ty
-                                  sdocCtxt = Ghc.initDefaultSDocContext dynFlags
+                                  sdocCtxt = (Ghc.initDefaultSDocContext dynFlags)
+                                    { Ghc.sdocLineLength = 5000 }
                                   tyStr = Ghc.renderWithContext sdocCtxt tySDoc
                                   mHsTy = either (const Nothing) Just
                                         $ EP.parseType dynFlags "" tyStr

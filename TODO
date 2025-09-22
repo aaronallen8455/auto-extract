@@ -1,1 +1,2 @@
 - If parse error occurs but there are no valid extracts, custom error
+- test coverage for large type signatures
