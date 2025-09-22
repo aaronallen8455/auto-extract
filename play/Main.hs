@@ -9,5 +9,5 @@ main :: IO ()
 main = pure ()
 
 -- com
-x :: Int
+-- x :: Int
 x = let ttt = 12 in EXTRACT@hello (ttt + 19 + x)

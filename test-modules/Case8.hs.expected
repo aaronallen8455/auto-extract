@@ -1,0 +1,12 @@
+module Case8 where
+
+test =
+  let y = 5
+      x = 3
+   in a x y
+
+b :: Num a => a -> a -> a -> a
+b x y z = x + y * z
+
+a :: Integer -> Integer -> Integer
+a x y = let z = 10 in test + b x y z

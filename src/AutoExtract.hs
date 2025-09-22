@@ -62,12 +62,10 @@ updateHscEnv hscEnv = do
                     { Ghc.parsedResultAction = \_ _ result -> do
                         pure $ rewriteToLet result
                     , Ghc.renamedResultAction = \_ gblEnv grp -> do
-                        liftIO $ putStrLn "RENAMER COMPLETED"
                         let (newNames, newGrp) = performExtractions gblEnv grp
                         liftIO $ modifyIORef extractedNamesRef (Map.union (Map.fromList newNames))
                         pure (gblEnv, newGrp)
                     , Ghc.typeCheckResultAction = \_ tcModSum gblEnv -> do
-                        liftIO $ putStrLn "TC COMPLETED"
                         extractedNames <- liftIO $ readIORef extractedNamesRef
                         let dynFlags = Ghc.ms_hspp_opts tcModSum `Ghc.gopt_set` Ghc.Opt_KeepRawTokenStream
                         extractionParams <- Map.mapKeys nameToBS <$>
@@ -207,6 +205,18 @@ rewriteToLet result =
             (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA bndName))
        in expr
 
+-- | Custom scheme that allows a transformation to inspect the context within
+-- a bottom up traversal.
+everywhereCtx
+  :: forall w. Monoid w
+  => (w -> Syb.GenericM (W.Writer w))
+  -> Syb.GenericM (W.Writer w)
+everywhereCtx f = go where
+  go :: Syb.GenericM (W.Writer w)
+  go x = do
+    (x', w) <- W.listen $ Syb.gmapM go x
+    f w x'
+
 performExtractions
   :: Ghc.TcGblEnv
   -> Ghc.HsGroup Ghc.GhcRn
@@ -230,10 +240,19 @@ performExtractions gblEnv grp =
 
     extract :: Ghc.LHsBind Ghc.GhcRn -> ([Ghc.LHsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])])
     extract (Ghc.L loc bind) =
-      let (updated, (newBinds, newNames)) = W.runWriter $ Syb.everywhereM (Syb.mkM go) bind
-          go :: Ghc.HsExpr Ghc.GhcRn
-             -> W.Writer ([Ghc.HsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])]) (Ghc.HsExpr Ghc.GhcRn)
-          go = \case
+      let (updated, (newBinds, newNames)) = W.runWriter $
+            everywhereCtx
+              (\w ->
+                let newDeclNames = fst <$> snd w
+                 in Syb.mkM (rewriteAndExtract newDeclNames) `Syb.extM` addFVs newDeclNames
+              )
+              bind
+            -- TODO use context to remove new decl names from args
+          rewriteAndExtract
+            :: [Ghc.Name]
+            -> Ghc.HsExpr Ghc.GhcRn
+            -> W.Writer ([Ghc.HsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])]) (Ghc.HsExpr Ghc.GhcRn)
+          rewriteAndExtract newDeclNames = \case
                 Ghc.HsLet _
                   (Ghc.HsValBinds _
                      (Ghc.XValBindsLR
@@ -267,9 +286,9 @@ performExtractions gblEnv grp =
                   _
                     | Just occNameBS <- BS.stripSuffix "_EXTRACT" $ nameToBS bndName
                     -> let args = Ghc.nameSetElemsStable
+                                . Ghc.delFVs newDeclNames
                                 $ freeVars `Ghc.minusNameSet` topLevelNames
                            topLvlName = Ghc.tidyNameOcc bndName (Ghc.mkVarOccFS $ Ghc.mkFastStringByteString occNameBS)
-                             -- Ghc.mkExternalName (Ghc.nameUnique bndName) (Ghc.tcg_mod gblEnv) (Ghc.mkVarOccFS $ Ghc.mkFastStringByteString occNameBS) Ghc.noSrcSpan
                            newBind =
                              Ghc.FunBind freeVars (Ghc.noLocA topLvlName) $
                                Ghc.MG Ghc.FromSource
@@ -292,6 +311,17 @@ performExtractions gblEnv grp =
                                args
                         in W.writer (newExpr, ([newBind], [(topLvlName, args)]))
 
+                x -> pure x
+
+          addFVs :: Monad m
+                 => [Ghc.Name]
+                 -> Ghc.HsBind Ghc.GhcRn
+                 -> m (Ghc.HsBind Ghc.GhcRn)
+          addFVs newDeclNames = \case
+                Ghc.FunBind fvs a b ->
+                  pure $ Ghc.FunBind (Ghc.extendNameSetList fvs newDeclNames) a b
+                Ghc.PatBind fvs a b c ->
+                  pure $ Ghc.PatBind (Ghc.extendNameSetList fvs newDeclNames) a b c
                 x -> pure x
 
        in (Ghc.L loc updated : (Ghc.noLocA <$> reverse newBinds), newNames)
