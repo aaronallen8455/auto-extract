@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Main (main) where
 
 import           Control.Monad
@@ -18,7 +19,11 @@ main = defaultMain $ testGroup "Tests"
     , testCase "7" $ runTest "Case7.hs"
     , testCase "8" $ runTest "Case8.hs"
     , testCase "9" $ runTest "Case9.hs"
-    , testCase "10" $ runTest "Case10.hs"
+#if MIN_VERSION_ghc(9,12,0)
+    , testCase "10a" $ runTest "Case10a.hs"
+#else
+    , testCase "10b" $ runTest "Case10b.hs"
+#endif
     ]
   ]
 

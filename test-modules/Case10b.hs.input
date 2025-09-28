@@ -1,0 +1,14 @@
+module Case10 where
+
+test :: Int
+test =
+  let x = 3
+      y = 3
+      z = 4
+      h = 9
+   in EXTRACT@a
+      (fromIntegral x
+      + fromIntegral y
+      * fromIntegral z
+      * fromIntegral h
+      )

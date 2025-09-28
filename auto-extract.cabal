@@ -43,7 +43,8 @@ test-suite auto-extract-test
         process,
         directory,
         tasty,
-        tasty-hunit
+        tasty-hunit,
+        ghc
 
 -- executable play
 --   hs-source-dirs: play

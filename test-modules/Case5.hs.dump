@@ -1,0 +1,892 @@
+
+(L
+ { 1:1 }
+ (HsModule
+  (XModulePs
+   (EpAnn
+    (EpaDelta (SameLine 0) [])
+    (AnnsModule
+     [(AddEpAnn AnnModule (EpaDelta (SameLine 0) []))
+     ,(AddEpAnn AnnWhere (EpaDelta (SameLine 1) []))]
+     []
+     []
+     (Just
+      ((,)
+       { 12:1 }
+       { 11:15 })))
+    (EpaComments
+     []))
+   (EpVirtualBraces
+    (1))
+   (Nothing)
+   (Nothing))
+  (Just
+   (L
+    (EpAnn
+     (EpaDelta (SameLine 1) [])
+     (AnnListItem
+      [])
+     (EpaComments
+      []))
+    {ModuleName: Case5}))
+  (Nothing)
+  []
+  [(L
+    (EpAnn
+     (EpaDelta (DifferentLine 2 1) [])
+     (AnnListItem
+      [])
+     (EpaComments
+      []))
+    (ValD
+     (NoExtField)
+     (FunBind
+      (NoExtField)
+      (L
+       (EpAnn
+        (EpaDelta (SameLine 0) [])
+        (NameAnnTrailing
+         [])
+        (EpaComments
+         []))
+       (Unqual
+        {OccName: test}))
+      (MG
+       (FromSource)
+       (L
+        (EpAnn
+         (EpaDelta (SameLine 0) [])
+         (AnnList
+          (Nothing)
+          (Nothing)
+          (Nothing)
+          []
+          [])
+         (EpaComments
+          []))
+        [(L
+          (EpAnn
+           (EpaDelta (SameLine 0) [])
+           (AnnListItem
+            [])
+           (EpaComments
+            []))
+          (Match
+           []
+           (FunRhs
+            (L
+             (EpAnn
+              (EpaDelta (SameLine 0) [])
+              (NameAnnTrailing
+               [])
+              (EpaComments
+               []))
+             (Unqual
+              {OccName: test}))
+            (Prefix)
+            (NoSrcStrict))
+           []
+           (GRHSs
+            (EpaComments
+             [])
+            [(L
+              (EpAnn
+               (EpaDelta (SameLine 1) [])
+               (NoEpAnns)
+               (EpaComments
+                []))
+              (GRHS
+               (EpAnn
+                (EpaDelta (SameLine 0) [])
+                (GrhsAnn
+                 (Nothing)
+                 (AddEpAnn AnnEqual (EpaDelta (SameLine 0) [])))
+                (EpaComments
+                 []))
+               []
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 1) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsDo
+                 (AnnList
+                  (Just
+                   (EpaSpan { (4,3)-(5,7) }))
+                  (Nothing)
+                  (Nothing)
+                  [(AddEpAnn AnnDo (EpaDelta (SameLine 0) []))]
+                  [])
+                 (DoExpr
+                  (Nothing))
+                 (L
+                  (EpAnn
+                   (EpaDelta (DifferentLine 1 3) [])
+                   (AnnList
+                    (Just
+                     (EpaSpan { (4,3)-(5,7) }))
+                    (Nothing)
+                    (Nothing)
+                    []
+                    [])
+                   (EpaComments
+                    []))
+                  [(L
+                    (EpAnn
+                     (EpaDelta (SameLine 0) [])
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (LetStmt
+                     [(AddEpAnn AnnLet (EpaDelta (SameLine 0) []))]
+                     (HsValBinds
+                      (EpAnn
+                       (EpaDelta (SameLine 1) [])
+                       (AnnList
+                        (Nothing)
+                        (Nothing)
+                        (Nothing)
+                        []
+                        [])
+                       (EpaComments
+                        []))
+                      (ValBinds
+                       (AnnSortKey
+                        [(BindTag)])
+                       {Bag(LocatedA (HsBind GhcPs)):
+                        [(L
+                          (EpAnn
+                           (EpaDelta (SameLine 0) [])
+                           (AnnListItem
+                            [])
+                           (EpaComments
+                            []))
+                          (FunBind
+                           (NoExtField)
+                           (L
+                            (EpAnn
+                             (EpaDelta (SameLine 0) [])
+                             (NameAnnTrailing
+                              [])
+                             (EpaComments
+                              []))
+                            (Unqual
+                             {OccName: m}))
+                           (MG
+                            (FromSource)
+                            (L
+                             (EpAnn
+                              (EpaDelta (SameLine 0) [])
+                              (AnnList
+                               (Nothing)
+                               (Nothing)
+                               (Nothing)
+                               []
+                               [])
+                              (EpaComments
+                               []))
+                             [(L
+                               (EpAnn
+                                (EpaDelta (SameLine 0) [])
+                                (AnnListItem
+                                 [])
+                                (EpaComments
+                                 []))
+                               (Match
+                                []
+                                (FunRhs
+                                 (L
+                                  (EpAnn
+                                   (EpaDelta (SameLine 0) [])
+                                   (NameAnnTrailing
+                                    [])
+                                   (EpaComments
+                                    []))
+                                  (Unqual
+                                   {OccName: m}))
+                                 (Prefix)
+                                 (NoSrcStrict))
+                                []
+                                (GRHSs
+                                 (EpaComments
+                                  [])
+                                 [(L
+                                   (EpAnn
+                                    (EpaDelta (SameLine 1) [])
+                                    (NoEpAnns)
+                                    (EpaComments
+                                     []))
+                                   (GRHS
+                                    (EpAnn
+                                     (EpaDelta (SameLine 0) [])
+                                     (GrhsAnn
+                                      (Nothing)
+                                      (AddEpAnn AnnEqual (EpaDelta (SameLine 0) [])))
+                                     (EpaComments
+                                      []))
+                                    []
+                                    (L
+                                     (EpAnn
+                                      (EpaDelta (SameLine 1) [])
+                                      (AnnListItem
+                                       [])
+                                      (EpaComments
+                                       []))
+                                     (HsVar
+                                      (NoExtField)
+                                      (L
+                                       (EpAnn
+                                        (EpaDelta (SameLine 0) [])
+                                        (NameAnnTrailing
+                                         [])
+                                        (EpaComments
+                                         []))
+                                       (Unqual
+                                        {OccName: getLine}))))))]
+                                 (EmptyLocalBinds
+                                  (NoExtField)))))]))))]}
+                       []))))
+                  ,(L
+                    (EpAnn
+                     (EpaDelta (DifferentLine 1 0) [])
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (BodyStmt
+                     (NoExtField)
+                     (L
+                      (EpAnn
+                       (EpaDelta (SameLine 0) [])
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsApp
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 0) [])
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (HsVar
+                         (NoExtField)
+                         (L
+                          (EpAnn
+                           (EpaDelta (SameLine 0) [])
+                           (NameAnnTrailing
+                            [])
+                           (EpaComments
+                            []))
+                          (Unqual
+                           {OccName: dup}))))
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 1) [])
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (HsVar
+                         (NoExtField)
+                         (L
+                          (EpAnn
+                           (EpaDelta (SameLine 0) [])
+                           (NameAnnTrailing
+                            [])
+                           (EpaComments
+                            []))
+                          (Unqual
+                           {OccName: m}))))))
+                     (NoExtField)
+                     (NoExtField)))])))))]
+            (EmptyLocalBinds
+             (NoExtField)))))])))))
+  ,(L
+    (EpAnn
+     (EpaDelta (DifferentLine 2 1) [])
+     (AnnListItem
+      [])
+     (EpaComments
+      []))
+    (SigD
+     (NoExtField)
+     (TypeSig
+      (AnnSig
+       (AddEpAnn AnnDcolon (EpaDelta (SameLine 1) []))
+       [])
+      [(L
+        (EpAnn
+         (EpaDelta (SameLine 0) [])
+         (NameAnnTrailing
+          [])
+         (EpaComments
+          []))
+        (Unqual
+         {OccName: dup}))]
+      (HsWC
+       (NoExtField)
+       (L
+        (EpAnn
+         (EpaDelta (SameLine 1) [])
+         (AnnListItem
+          [])
+         (EpaComments
+          []))
+        (HsSig
+         (NoExtField)
+         (HsOuterImplicit
+          (NoExtField))
+         (L
+          (EpAnn
+           (EpaDelta (SameLine 0) [])
+           (AnnListItem
+            [])
+           (EpaComments
+            []))
+          (HsQualTy
+           (NoExtField)
+           (L
+            (EpAnn
+             (EpaDelta (SameLine 0) [])
+             (AnnContext
+              (Just
+               ((,)
+                (NormalSyntax)
+                (EpaDelta (SameLine 1) [])))
+              [(EpaDelta (SameLine 0) [])]
+              [(EpaDelta (SameLine 0) [])])
+             (EpaComments
+              []))
+            [(L
+              (EpAnn
+               (EpaDelta (SameLine 0) [])
+               (AnnListItem
+                [(AddCommaAnn
+                  (EpaDelta (SameLine 0) []))])
+               (EpaComments
+                []))
+              (HsAppTy
+               (NoExtField)
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 0) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: Monad}))))
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 1) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: m}))))))
+            ,(L
+              (EpAnn
+               (EpaDelta (SameLine 1) [])
+               (AnnListItem
+                [])
+               (EpaComments
+                []))
+              (HsAppTy
+               (NoExtField)
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 0) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: Semigroup}))))
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 1) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: b}))))))])
+           (L
+            (EpAnn
+             (EpaDelta (SameLine 1) [])
+             (AnnListItem
+              [])
+             (EpaComments
+              []))
+            (HsFunTy
+             (NoExtField)
+             (HsUnrestrictedArrow
+              (EpUniTok
+               (EpaDelta (SameLine 1) [])
+               (NormalSyntax)))
+             (L
+              (EpAnn
+               (EpaDelta (SameLine 0) [])
+               (AnnListItem
+                [])
+               (EpaComments
+                []))
+              (HsAppTy
+               (NoExtField)
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 0) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: m}))))
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 1) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: b}))))))
+             (L
+              (EpAnn
+               (EpaDelta (SameLine 1) [])
+               (AnnListItem
+                [])
+               (EpaComments
+                []))
+              (HsAppTy
+               (NoExtField)
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 0) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: m}))))
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 1) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsTyVar
+                 []
+                 (NotPromoted)
+                 (L
+                  (EpAnn
+                   (EpaDelta (SameLine 0) [])
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  (Unqual
+                   {OccName: b}))))))))))))))))
+  ,(L
+    (EpAnn
+     (EpaDelta (DifferentLine 1 1) [])
+     (AnnListItem
+      [])
+     (EpaComments
+      []))
+    (ValD
+     (NoExtField)
+     (FunBind
+      (NoExtField)
+      (L
+       (EpAnn
+        (EpaDelta (SameLine 0) [])
+        (NameAnnTrailing
+         [])
+        (EpaComments
+         []))
+       (Unqual
+        {OccName: dup}))
+      (MG
+       (FromSource)
+       (L
+        (EpAnn
+         (EpaDelta (SameLine 0) [])
+         (AnnList
+          (Nothing)
+          (Nothing)
+          (Nothing)
+          []
+          [])
+         (EpaComments
+          []))
+        [(L
+          (EpAnn
+           (EpaDelta (SameLine 0) [])
+           (AnnListItem
+            [])
+           (EpaComments
+            []))
+          (Match
+           []
+           (FunRhs
+            (L
+             (EpAnn
+              (EpaDelta (SameLine 0) [])
+              (NameAnnTrailing
+               [])
+              (EpaComments
+               []))
+             (Unqual
+              {OccName: dup}))
+            (Prefix)
+            (NoSrcStrict))
+           [(L
+             (EpAnn
+              (EpaDelta (SameLine 1) [])
+              (AnnListItem
+               [])
+              (EpaComments
+               []))
+             (VarPat
+              (NoExtField)
+              (L
+               (EpAnn
+                (EpaDelta (SameLine 0) [])
+                (NameAnnTrailing
+                 [])
+                (EpaComments
+                 []))
+               (Unqual
+                {OccName: m}))))]
+           (GRHSs
+            (EpaComments
+             [])
+            [(L
+              (EpAnn
+               (EpaDelta (SameLine 1) [])
+               (NoEpAnns)
+               (EpaComments
+                []))
+              (GRHS
+               (EpAnn
+                (EpaDelta (SameLine 0) [])
+                (GrhsAnn
+                 (Nothing)
+                 (AddEpAnn AnnEqual (EpaDelta (SameLine 0) [])))
+                (EpaComments
+                 []))
+               []
+               (L
+                (EpAnn
+                 (EpaDelta (SameLine 1) [])
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (HsDo
+                 (AnnList
+                  (Just
+                   (EpaSpan { (9,3)-(11,15) }))
+                  (Nothing)
+                  (Nothing)
+                  [(AddEpAnn AnnDo (EpaDelta (SameLine 0) []))]
+                  [])
+                 (DoExpr
+                  (Nothing))
+                 (L
+                  (EpAnn
+                   (EpaDelta (DifferentLine 1 3) [])
+                   (AnnList
+                    (Just
+                     (EpaSpan { (9,3)-(11,15) }))
+                    (Nothing)
+                    (Nothing)
+                    []
+                    [])
+                   (EpaComments
+                    []))
+                  [(L
+                    (EpAnn
+                     (EpaDelta (SameLine 0) [])
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (BindStmt
+                     [(AddEpAnn AnnLarrow (EpaDelta (SameLine 1) []))]
+                     (L
+                      (EpAnn
+                       (EpaDelta (SameLine 0) [])
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (VarPat
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 0) [])
+                         (NameAnnTrailing
+                          [])
+                         (EpaComments
+                          []))
+                        (Unqual
+                         {OccName: a}))))
+                     (L
+                      (EpAnn
+                       (EpaDelta (SameLine 1) [])
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsVar
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 0) [])
+                         (NameAnnTrailing
+                          [])
+                         (EpaComments
+                          []))
+                        (Unqual
+                         {OccName: m}))))))
+                  ,(L
+                    (EpAnn
+                     (EpaDelta (DifferentLine 1 0) [])
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (BindStmt
+                     [(AddEpAnn AnnLarrow (EpaDelta (SameLine 1) []))]
+                     (L
+                      (EpAnn
+                       (EpaDelta (SameLine 0) [])
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (VarPat
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 0) [])
+                         (NameAnnTrailing
+                          [])
+                         (EpaComments
+                          []))
+                        (Unqual
+                         {OccName: b}))))
+                     (L
+                      (EpAnn
+                       (EpaDelta (SameLine 1) [])
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsVar
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 0) [])
+                         (NameAnnTrailing
+                          [])
+                         (EpaComments
+                          []))
+                        (Unqual
+                         {OccName: m}))))))
+                  ,(L
+                    (EpAnn
+                     (EpaDelta (DifferentLine 1 0) [])
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (BodyStmt
+                     (NoExtField)
+                     (L
+                      (EpAnn
+                       (EpaDelta (SameLine 0) [])
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsApp
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 0) [])
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (HsVar
+                         (NoExtField)
+                         (L
+                          (EpAnn
+                           (EpaDelta (SameLine 0) [])
+                           (NameAnnTrailing
+                            [])
+                           (EpaComments
+                            []))
+                          (Unqual
+                           {OccName: pure}))))
+                       (L
+                        (EpAnn
+                         (EpaDelta (SameLine 1) [])
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (HsPar
+                         ((,)
+                          (EpTok
+                           (EpaDelta (SameLine 0) []))
+                          (EpTok
+                           (EpaDelta (SameLine 0) [])))
+                         (L
+                          (EpAnn
+                           (EpaDelta (SameLine 0) [])
+                           (AnnListItem
+                            [])
+                           (EpaComments
+                            []))
+                          (OpApp
+                           []
+                           (L
+                            (EpAnn
+                             (EpaDelta (SameLine 0) [])
+                             (AnnListItem
+                              [])
+                             (EpaComments
+                              []))
+                            (HsVar
+                             (NoExtField)
+                             (L
+                              (EpAnn
+                               (EpaDelta (SameLine 0) [])
+                               (NameAnnTrailing
+                                [])
+                               (EpaComments
+                                []))
+                              (Unqual
+                               {OccName: a}))))
+                           (L
+                            (EpAnn
+                             (EpaDelta (SameLine 1) [])
+                             (AnnListItem
+                              [])
+                             (EpaComments
+                              []))
+                            (HsVar
+                             (NoExtField)
+                             (L
+                              (EpAnn
+                               (EpaDelta (SameLine 0) [])
+                               (NameAnnTrailing
+                                [])
+                               (EpaComments
+                                []))
+                              (Unqual
+                               {OccName: <>}))))
+                           (L
+                            (EpAnn
+                             (EpaDelta (SameLine 1) [])
+                             (AnnListItem
+                              [])
+                             (EpaComments
+                              []))
+                            (HsVar
+                             (NoExtField)
+                             (L
+                              (EpAnn
+                               (EpaDelta (SameLine 0) [])
+                               (NameAnnTrailing
+                                [])
+                               (EpaComments
+                                []))
+                              (Unqual
+                               {OccName: b}))))))))))
+                     (NoExtField)
+                     (NoExtField)))])))))]
+            (EmptyLocalBinds
+             (NoExtField)))))])))))]))

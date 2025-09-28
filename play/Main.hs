@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Main where
 
 import           Foo
@@ -8,6 +7,9 @@ import           Foo
 main :: IO ()
 main = pure ()
 
+z = 20
+
 -- com
--- x :: Int
-x = let ttt = 12 in EXTRACT@hello (ttt + 19 + x)
+x :: Int
+x = let y = 12
+     in EXTRACT@hello (y + 19 * z)
