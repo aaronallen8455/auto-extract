@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-orphans  #-}
 module AutoExtract.GhcFacade
   ( module Ghc
   , diffLine
@@ -29,7 +30,9 @@ import           GHC.Core.TyCo.Ppr as Ghc
 import           GHC.Utils.Error as Ghc
 import           GHC.Types.SrcLoc as Ghc
 
+#if MIN_VERSION_ghc(9,10,0)
 import qualified Language.Haskell.GHC.ExactPrint as EP
+#endif
 
 diffLine
   :: Int
@@ -43,15 +46,17 @@ diffLine rowOffset colOffset =
 diffLine rowOffset colOffset =
   Ghc.EpAnn (Ghc.EpaDelta (Ghc.DifferentLine rowOffset colOffset) []) Ghc.noAnn Ghc.emptyComments
 #elif MIN_VERSION_ghc(9,6,0)
-  -> Ghc.SrcSpanAnnA
+  -> Monoid ann => Ghc.SrcAnn ann
 diffLine rowOffset colOffset =
   Ghc.SrcSpanAnn
     (Ghc.EpAnn
-      (Ghc.Anchor Ghc.placeholderRealSpan (Ghc.MovedAnchor (Ghc.DifferentLine rowOffset colOffset)))
+      (Ghc.Anchor Ghc.placeholderRealSpan (Ghc.MovedAnchor
+        (if rowOffset == 0 then Ghc.SameLine colOffset else Ghc.DifferentLine rowOffset colOffset))
+      )
       mempty
       Ghc.emptyComments
     )
-    Ghc.generatedSrcSpan --Ghc.Anchor Ghc.placeholderRealSpan (Ghc.MovedAnchor (Ghc.SameLine 0))
+    (Ghc.RealSrcSpan Ghc.placeholderRealSpan mempty)
 #endif
 
 anchorD1

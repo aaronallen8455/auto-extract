@@ -106,7 +106,7 @@ mkInnerPlugin hscEnv extractedNamesRef = Ghc.defaultPlugin
                 sdocCtxt = (Ghc.initDefaultSDocContext dynFlags)
                   { Ghc.sdocLineLength = 5000 }
                 tyStr = Ghc.renderWithContext sdocCtxt tySDoc
-                mHsTy = either (const Nothing) Just
+                mHsTy = either (const Nothing) (Just . EP.makeDeltaAst)
                       $ EP.parseType dynFlags "" tyStr
             pure Extraction
               { argNames = Ghc.occName <$> args
@@ -165,24 +165,24 @@ pattern ExtractPat bnd body
        (removeParens -> body)
 
 removeParens :: Ghc.LHsExpr Ghc.GhcPs -> Ghc.LHsExpr Ghc.GhcPs
+#if MIN_VERSION_ghc(9,10,0)
 removeParens (Ghc.L l (Ghc.HsPar _ (Ghc.L _ x))) = Ghc.L l (doIndentCorrect x)
--- removeParens (Ghc.L l (Ghc.HsPar _ (Ghc.L _ x))) = -- Ghc.L l (doIndentCorrect x)
---   let addCol = \case
---         Ghc.EpaDelta (Ghc.DifferentLine r c) a ->
---           Ghc.EpaDelta (Ghc.DifferentLine r (c + 1)) a
---         a -> a
---    in Ghc.L l { Ghc.entry = addCol (Ghc.entry l) } x
+#else
+removeParens (Ghc.L l (Ghc.HsPar _ _ (Ghc.L _ x) _)) = Ghc.L l (doIndentCorrect x)
+#endif
 removeParens x = x
 
--- | Older versions exact-print have an indentation bug involving do statements
+-- | exact-print 9.10 has indentation issues. This corrects for do blocks.
 doIndentCorrect :: Ghc.HsExpr Ghc.GhcPs -> Ghc.HsExpr Ghc.GhcPs
-#if !MIN_VERSION_ghc(9,12,0)
+#if MIN_VERSION_ghc(9,12,0)
+#elif MIN_VERSION_ghc(9,10,0)
 doIndentCorrect (Ghc.HsDo ann t (Ghc.L l2 s)) =
   let addCol = \case
         Ghc.EpaDelta (Ghc.DifferentLine r c) a ->
           Ghc.EpaDelta (Ghc.DifferentLine r (c + 1)) a
         x -> x
    in Ghc.HsDo ann t (Ghc.L l2 {Ghc.entry = addCol (Ghc.entry l2)} s)
+#else
 #endif
 doIndentCorrect x = x
 
@@ -216,7 +216,7 @@ rewriteToLet result =
                      grhss
                    ]
                  )
-#else
+#elif MIN_VERSION_ghc(9,10,0)
           mg = Ghc.MG Ghc.FromSource
                  (Ghc.L Ghc.noSrcSpanA
                    [Ghc.noLocA $ Ghc.Match
@@ -226,12 +226,29 @@ rewriteToLet result =
                      grhss
                    ]
                  )
+#else
+          mg = Ghc.MG Ghc.FromSource
+                 (Ghc.L Ghc.noSrcSpanA
+                   [Ghc.noLocA $ Ghc.Match
+                     Ghc.noAnn
+                     (Ghc.FunRhs (Ghc.noLocA bndName) Ghc.Prefix Ghc.SrcLazy)
+                     []
+                     grhss
+                   ]
+                 )
 #endif
           grhss :: Ghc.GRHSs Ghc.GhcPs (Ghc.LHsExpr Ghc.GhcPs)
+#if MIN_VERSION_ghc(9,10,0)
           grhss = Ghc.GRHSs Ghc.emptyComments
                     [Ghc.noLocA $ Ghc.GRHS Ghc.noSrcSpanA [] body]
                     (Ghc.EmptyLocalBinds Ghc.noExtField)
+#else
+          grhss = Ghc.GRHSs Ghc.emptyComments
+                    [Ghc.noLocA $ Ghc.GRHS Ghc.noAnn [] body]
+                    (Ghc.EmptyLocalBinds Ghc.noExtField)
+#endif
           expr :: Ghc.HsExpr Ghc.GhcPs
+#if MIN_VERSION_ghc(9,10,0)
           expr = Ghc.HsLet Ghc.noAnn
             (Ghc.HsValBinds Ghc.noSrcSpanA
                (Ghc.ValBinds Ghc.NoAnnSortKey
@@ -240,6 +257,17 @@ rewriteToLet result =
                )
             )
             (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA bndName))
+#else
+          expr = Ghc.HsLet Ghc.noAnn Ghc.noHsTok
+            (Ghc.HsValBinds Ghc.noAnn
+               (Ghc.ValBinds Ghc.NoAnnSortKey
+                  [ Ghc.noLocA $ Ghc.FunBind Ghc.noExtField (Ghc.noLocA bndName) mg ]
+                  []
+               )
+            )
+            Ghc.noHsTok
+            (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA bndName))
+#endif
        in expr
 
 -- | Custom scheme that allows a transformation to inspect the context within
@@ -320,7 +348,8 @@ performExtractions gblEnv grp =
                        )
                      )
                   )
-#else
+                  _
+#elif MIN_VERSION_ghc(9,10,0)
                 Ghc.HsLet _
                   (Ghc.HsValBinds _
                      (Ghc.XValBindsLR
@@ -351,8 +380,40 @@ performExtractions gblEnv grp =
                        )
                      )
                   )
-#endif
                   _
+#else
+                Ghc.HsLet _ _
+                  (Ghc.HsValBinds _
+                     (Ghc.XValBindsLR
+                       (Ghc.NValBinds
+                         [ ( _recFlag
+                           , [ Ghc.L _
+                                 (Ghc.FunBind freeVars (Ghc.L _ bndName)
+                                   (Ghc.MG Ghc.FromSource
+                                     (Ghc.L _
+                                       [Ghc.L _
+                                         (Ghc.Match
+                                           _
+                                           _
+                                           _
+                                           grhss@(Ghc.GRHSs _
+                                             [Ghc.L _ (Ghc.GRHS _ [] _)]
+                                             _
+                                           )
+                                         )
+                                       ]
+                                     )
+                                   )
+                                )
+                             ]
+                           )
+                         ]
+                         []
+                       )
+                     )
+                  )
+                  _ _
+#endif
                     | Just occNameBS <- BS.stripSuffix "_EXTRACT" $ nameToBS bndName
                     -> let args = Ghc.nameSetElemsStable
                                 . Ghc.delFVs newDeclNames
@@ -370,7 +431,7 @@ performExtractions gblEnv grp =
                                      grhss
                                    ]
                                  )
-#else
+#elif MIN_VERSION_ghc(9,10,0)
                              Ghc.FunBind freeVars (Ghc.noLocA topLvlName) $
                                Ghc.MG Ghc.FromSource
                                  (Ghc.L Ghc.noSrcSpanA
@@ -381,14 +442,32 @@ performExtractions gblEnv grp =
                                      grhss
                                    ]
                                  )
+#else
+                             Ghc.FunBind freeVars (Ghc.noLocA topLvlName) $
+                               Ghc.MG Ghc.FromSource
+                                 (Ghc.L Ghc.noSrcSpanA
+                                   [Ghc.noLocA $ Ghc.Match
+                                     Ghc.noAnn
+                                     (Ghc.FunRhs (Ghc.noLocA topLvlName) Ghc.Prefix Ghc.SrcLazy)
+                                     (Ghc.noLocA . Ghc.VarPat Ghc.noExtField . Ghc.noLocA <$> args)
+                                     grhss
+                                   ]
+                                 )
 #endif
                            newExpr =
                              foldl'
                                (\acc arg ->
+#if MIN_VERSION_ghc(9,10,0)
                                  Ghc.HsApp
                                    Ghc.noExtField
                                    (Ghc.noLocA acc)
                                    (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA arg)))
+#else
+                                 Ghc.HsApp
+                                   Ghc.noComments
+                                   (Ghc.noLocA acc)
+                                   (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA arg)))
+#endif
                                (Ghc.HsVar Ghc.noExtField (Ghc.noLocA topLvlName))
                                args
                         in W.writer (newExpr, ([newBind], [(topLvlName, args)]))
@@ -402,8 +481,13 @@ performExtractions gblEnv grp =
           addFVs newDeclNames = \case
                 Ghc.FunBind fvs a b ->
                   pure $ Ghc.FunBind (Ghc.extendNameSetList fvs newDeclNames) a b
+#if MIN_VERSION_ghc(9,10,0)
                 Ghc.PatBind fvs a b c ->
                   pure $ Ghc.PatBind (Ghc.extendNameSetList fvs newDeclNames) a b c
+#else
+                Ghc.PatBind fvs a b ->
+                  pure $ Ghc.PatBind (Ghc.extendNameSetList fvs newDeclNames) a b
+#endif
                 x -> pure x
 
        in (Ghc.L loc updated : (Ghc.noLocA <$> reverse newBinds), newNames)
@@ -425,15 +509,23 @@ modifyParsedDecls extrDecls = foldMap go
         -> decls bnd body inputs
       x -> pure x
 
+    decls :: Ghc.FastString -> Ghc.LHsExpr Ghc.GhcPs -> Extraction -> W.Writer [Ghc.LHsDecl Ghc.GhcPs] (Ghc.HsExpr Ghc.GhcPs)
     decls bnd body inputs =
       let rdrName = Ghc.mkRdrUnqual $ Ghc.mkVarOccFS bnd
           arNames = Ghc.L Ghc.anchorD1 . Ghc.mkRdrUnqual <$> argNames inputs
           callsite = foldl'
             (\acc arg ->
+#if MIN_VERSION_ghc(9,10,0)
               Ghc.HsApp
                 Ghc.noExtField
                 (Ghc.noLocA acc)
                 (Ghc.L Ghc.noAnn $ Ghc.HsVar Ghc.noExtField arg)
+#else
+              Ghc.HsApp
+                Ghc.noComments
+                (Ghc.noLocA acc)
+                (Ghc.L Ghc.noSrcSpanA $ Ghc.HsVar Ghc.noExtField arg)
+#endif
             )
             (Ghc.HsVar Ghc.noExtField $ Ghc.noLocA rdrName)
             arNames
@@ -449,10 +541,21 @@ modifyParsedDecls extrDecls = foldMap go
                       body
                     ]
                     (Ghc.EmptyLocalBinds Ghc.noExtField)
-#else
+#elif MIN_VERSION_ghc(9,10,0)
           grhss = Ghc.GRHSs Ghc.emptyComments
                     [Ghc.L Ghc.anchorD1 $ Ghc.GRHS
                       (Ghc.EpAnn EP.d0
+                        (Ghc.GrhsAnn Nothing (Ghc.AddEpAnn Ghc.AnnEqual EP.d0)) -- (Left (Ghc.EpTok EP.d1)))
+                        Ghc.emptyComments
+                      )
+                      []
+                      body
+                    ]
+                    (Ghc.EmptyLocalBinds Ghc.noExtField)
+#else
+          grhss = Ghc.GRHSs Ghc.emptyComments
+                    [Ghc.L Ghc.anchorD1 $ Ghc.GRHS
+                      (Ghc.EpAnn (Ghc.Anchor Ghc.placeholderRealSpan EP.m0)
                         (Ghc.GrhsAnn Nothing (Ghc.AddEpAnn Ghc.AnnEqual EP.d0)) -- (Left (Ghc.EpTok EP.d1)))
                         Ghc.emptyComments
                       )
@@ -469,42 +572,75 @@ modifyParsedDecls extrDecls = foldMap go
                 (Ghc.L Ghc.noSrcSpanA
                   [Ghc.L Ghc.noAnn $ Ghc.Match
                     Ghc.noExtField
-                    (Ghc.FunRhs (Ghc.noLocA rdrName) Ghc.Prefix Ghc.SrcLazy Ghc.noAnn)
+                    (Ghc.FunRhs (Ghc.noLocA rdrName) Ghc.Prefix Ghc.NoSrcStrict Ghc.noAnn)
                     (Ghc.noLocA $ Ghc.L (Ghc.diffLine 0 1) . Ghc.VarPat Ghc.noExtField <$> arNames)
                     grhss
                   ]
                 )
-#else
+#elif MIN_VERSION_ghc(9,10,0)
           newDecl = Ghc.L (Ghc.diffLine 1 1) $
             Ghc.ValD Ghc.noExtField $ Ghc.FunBind Ghc.noExtField (Ghc.L EP.noAnnSrcSpanDP0 rdrName) $
               Ghc.MG Ghc.FromSource
                 (Ghc.L EP.noAnnSrcSpanDP0
                   [Ghc.L Ghc.noAnn $ Ghc.Match
                     []
-                    (Ghc.FunRhs (Ghc.L EP.noAnnSrcSpanDP0 rdrName) Ghc.Prefix Ghc.SrcLazy)
+                    (Ghc.FunRhs (Ghc.L EP.noAnnSrcSpanDP0 rdrName) Ghc.Prefix Ghc.NoSrcStrict)
                     (Ghc.L EP.noAnnSrcSpanDP0 . Ghc.VarPat Ghc.noExtField <$> arNames)
                     grhss
                   ]
                 )
+#else
+          newDecl = Ghc.L (Ghc.diffLine 1 0) $
+            Ghc.ValD Ghc.noExtField $
+              Ghc.FunBind Ghc.noExtField
+                (Ghc.L (Ghc.diffLine 0 0) rdrName)
+              $ Ghc.MG Ghc.FromSource
+                  (Ghc.L (Ghc.diffLine 0 0)
+                    [Ghc.L (Ghc.diffLine 0 0) $ Ghc.Match
+                      (Ghc.ann (Ghc.diffLine 0 0))
+                      (Ghc.FunRhs (Ghc.L (Ghc.diffLine 0 0) rdrName) Ghc.Prefix Ghc.NoSrcStrict)
+                      (Ghc.noLocA . Ghc.VarPat Ghc.noExtField <$> arNames)
+                      grhss
+                    ]
+                  )
 #endif
           mSig :: Maybe (Ghc.LHsDecl Ghc.GhcPs)
           mSig = do
             hsType <- extractedType inputs
             Just $ Ghc.L (Ghc.diffLine 2 0) $ Ghc.SigD Ghc.noExtField $
+#if MIN_VERSION_ghc(9,12,0)
               Ghc.TypeSig
                   (Ghc.AnnSig
-#if MIN_VERSION_ghc(9,12,0)
                     (Ghc.EpUniTok EP.d1 Ghc.NormalSyntax)
                     Nothing
                     Nothing
-#else
-                    (Ghc.AddEpAnn Ghc.AnnDcolon EP.d1)
-                    []
-#endif
                   )
                   [Ghc.noLocA rdrName] $
                 Ghc.HsWC Ghc.noExtField $ Ghc.L Ghc.anchorD1 $
                   Ghc.HsSig Ghc.noExtField Ghc.mkHsOuterImplicit (Ghc.noLocA hsType)
+#elif MIN_VERSION_ghc(9,10,0)
+              Ghc.TypeSig
+                  (Ghc.AnnSig
+                    (Ghc.AddEpAnn Ghc.AnnDcolon EP.d1)
+                    []
+                  )
+                  [Ghc.noLocA rdrName] $
+                Ghc.HsWC Ghc.noExtField $ Ghc.L Ghc.anchorD1 $
+                  Ghc.HsSig Ghc.noExtField Ghc.mkHsOuterImplicit (Ghc.noLocA hsType)
+#else
+              Ghc.TypeSig
+                  (Ghc.EpAnn
+                    (Ghc.Anchor Ghc.placeholderRealSpan EP.m0)
+                    (Ghc.AnnSig
+                      (Ghc.AddEpAnn Ghc.AnnDcolon EP.d1)
+                      []
+                    )
+                    Ghc.emptyComments
+                  )
+                  [Ghc.L (Ghc.diffLine 0 0) rdrName] $
+                Ghc.HsWC Ghc.noExtField $ Ghc.L Ghc.anchorD1 $
+                  Ghc.HsSig Ghc.noExtField Ghc.mkHsOuterImplicit (Ghc.L (Ghc.diffLine 0 0) hsType)
+#endif
        in W.writer (callsite, maybe id (:) mSig [newDecl])
 
 -- | Parse the given module file. Accounts for CPP comments
@@ -542,8 +678,8 @@ modifyModule
   -> IO ()
 modifyModule parsedMod usesCpp extractedDecls filePath = do
   let ast = EP.makeDeltaAst parsedMod
-      updatedDecls = modifyParsedDecls extractedDecls (EP.hsDecls ast)
-      updatedMod = EP.replaceDecls ast updatedDecls
+      updatedDecls = modifyParsedDecls extractedDecls (runTransform $ EP.hsDecls ast)
+      updatedMod = runTransform $ EP.replaceDecls ast updatedDecls
   -- If the source contains CPP, newlines are appended
   -- to the end of the file when exact printing. The simple
   -- solution is to remove trailing newlines after exact printing
@@ -554,6 +690,15 @@ modifyModule parsedMod usesCpp extractedDecls filePath = do
         | otherwise = id
       printed = removeTrailingNewlines $ EP.exactPrint updatedMod
   writeFile filePath printed
+
+#if MIN_VERSION_ghc(9,10,0)
+runTransform :: a -> a
+runTransform = id
+#else
+runTransform :: EP.Transform a -> a
+runTransform t = case EP.runTransform t of
+                   (a, _, _) -> a
+#endif
 
 -- | Diagnostic thrown when extraction occurs
 data ExtractDiag = ExtractDiag

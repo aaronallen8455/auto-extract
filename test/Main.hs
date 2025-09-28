@@ -19,10 +19,10 @@ main = defaultMain $ testGroup "Tests"
     , testCase "7" $ runTest "Case7.hs"
     , testCase "8" $ runTest "Case8.hs"
     , testCase "9" $ runTest "Case9.hs"
-#if MIN_VERSION_ghc(9,12,0)
+#if MIN_VERSION_ghc(9,12,0) || !MIN_VERSION_ghc(9,10,0)
     , testCase "10a" $ runTest "Case10a.hs"
 #else
-    , testCase "10b" $ runTest "Case10b.hs"
+    , testCase "10b" $ runTest "Case10b.hs" -- 9.10 indentation issue
 #endif
     ]
   ]
