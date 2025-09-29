@@ -17,6 +17,7 @@ library
     import:           warnings
     exposed-modules:  AutoExtract
     other-modules: AutoExtract.GhcFacade
+                   AutoExtract.Expr
     -- other-extensions:
     build-depends:    base,
                       ghc,
