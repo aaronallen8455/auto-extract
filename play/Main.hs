@@ -7,9 +7,10 @@ import           Foo
 main :: IO ()
 main = pure ()
 
-z = 20
-
--- com
-x :: Int
-x = let y = 12
-     in EXTRACT@hello (y + 19 * z)
+doubleInput :: IO ()
+doubleInput = do
+  input <- EXTRACT@promptNumber (do
+    putStrLn "Enter a number"
+    readLn)
+  let doubled = EXTRACT@double (input * 2)
+  print doubled

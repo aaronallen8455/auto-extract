@@ -11,6 +11,9 @@ module AutoExtract.Parser
   ) where
 
 import qualified Control.Monad.Trans.Writer.CPS as W
+#if !MIN_VERSION_ghc(9,10,0)
+import           Data.Foldable -- foldl'
+#endif
 import qualified Data.ByteString as BS
 import qualified Data.Generics as Syb
 import qualified Data.Map.Strict as Map
