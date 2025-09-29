@@ -25,10 +25,14 @@ import           GHC.Tc.Types as Ghc (TcGblEnv(..))
 import           GHC.Types.Name.Set as Ghc
 import           GHC.Data.FastString as Ghc
 import           GHC.Tc.Utils.Env as Ghc
-import           GHC.Driver.DynFlags as Ghc
 import           GHC.Core.TyCo.Ppr as Ghc
 import           GHC.Utils.Error as Ghc
 import           GHC.Types.SrcLoc as Ghc
+#if MIN_VERSION_ghc(9,8,0)
+import           GHC.Driver.DynFlags as Ghc
+#else
+import           GHC.Driver.Session as Ghc
+#endif
 
 #if MIN_VERSION_ghc(9,10,0)
 import qualified Language.Haskell.GHC.ExactPrint as EP
