@@ -8,8 +8,10 @@ module AutoExtract.Expr
   , mkRewrittenLet
   , pattern ExtractionLetExpr
   , mkExtractionBind
+  , nameToBS
   ) where
 
+import qualified Data.ByteString as BS
 import qualified Language.Haskell.GHC.ExactPrint as EP
 
 import qualified AutoExtract.GhcFacade as Ghc
@@ -357,3 +359,6 @@ mkExtractionBind freeVars topLvlName args grhss =
         ]
       )
 #endif
+
+nameToBS :: Ghc.HasOccName a => a -> BS.ByteString
+nameToBS = Ghc.bytesFS . Ghc.occNameFS . Ghc.occName

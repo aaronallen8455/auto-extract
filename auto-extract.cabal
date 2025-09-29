@@ -18,6 +18,8 @@ library
     exposed-modules:  AutoExtract
     other-modules: AutoExtract.GhcFacade
                    AutoExtract.Expr
+                   AutoExtract.Renamer
+                   AutoExtract.Parser
     -- other-extensions:
     build-depends:    base,
                       ghc,

@@ -2,16 +2,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 module AutoExtract
   ( plugin
   ) where
 
 import           Control.Monad (guard)
 import           Control.Monad.IO.Class (liftIO)
-import qualified Control.Monad.Trans.Writer.CPS as W
 import           Control.Exception (catch, throw)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -23,7 +21,6 @@ import           Data.IORef
 import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import           Data.String
-import qualified GHC.IsList as IsList
 import qualified GHC.Paths as Paths
 import qualified Language.Haskell.GHC.ExactPrint as EP
 import qualified Language.Haskell.GHC.ExactPrint.Parsers as EP
@@ -31,18 +28,13 @@ import qualified Language.Haskell.GHC.ExactPrint.Utils as EP
 
 import           AutoExtract.Expr
 import qualified AutoExtract.GhcFacade as Ghc
+import           AutoExtract.Parser (Extraction(..), ExtractedDecls, modifyParsedDecls, pattern ExtractPat)
+import           AutoExtract.Renamer (performExtractions)
 
 plugin :: Ghc.Plugin
 plugin = Ghc.defaultPlugin
   { Ghc.pluginRecompile = Ghc.purePlugin
   , Ghc.driverPlugin = \_opts env -> updateHscEnv env
-  }
-
-type ExtractedDecls = Map.Map BS.ByteString Extraction
-
-data Extraction = Extraction
-  { argNames :: [Ghc.OccName]
-  , extractedType :: Maybe (Ghc.HsType Ghc.GhcPs)
   }
 
 updateHscEnv :: Ghc.HscEnv -> IO Ghc.HscEnv
@@ -153,44 +145,6 @@ stringBufferToBS :: Ghc.StringBuffer -> BS.ByteString
 stringBufferToBS Ghc.StringBuffer {Ghc.buf = buf, Ghc.len = len} =
   BS.BS buf len
 
-pattern ExtractPat :: Ghc.FastString -> Ghc.LHsExpr Ghc.GhcPs -> Ghc.HsExpr Ghc.GhcPs
-pattern ExtractPat bnd body
-  <- Ghc.HsApp _
-       (Ghc.L _
-         (Ghc.HsApp _
-           (Ghc.L _ (Ghc.HsVar _ (Ghc.L _ (nameToBS -> "EXTRACT"))))
-           (Ghc.L _ (Ghc.HsLit _ (Ghc.HsString _ bnd)))
-         )
-       )
-       (removeParens -> body)
-
-removeParens :: Ghc.LHsExpr Ghc.GhcPs -> Ghc.LHsExpr Ghc.GhcPs
-#if MIN_VERSION_ghc(9,10,0)
-removeParens (Ghc.L l (Ghc.HsPar _ (Ghc.L _ x))) = Ghc.L l (doIndentCorrect x)
-#else
-removeParens (Ghc.L l (Ghc.HsPar _ _ (Ghc.L _ x) _)) = Ghc.L l x
-#endif
-removeParens x = x
-
--- | exact-print 9.10 has indentation issues. This corrects for do blocks.
-#if MIN_VERSION_ghc(9,12,0)
-doIndentCorrect :: Ghc.HsExpr Ghc.GhcPs -> Ghc.HsExpr Ghc.GhcPs
-doIndentCorrect x = x
-#elif MIN_VERSION_ghc(9,10,0)
-doIndentCorrect :: Ghc.HsExpr Ghc.GhcPs -> Ghc.HsExpr Ghc.GhcPs
-doIndentCorrect (Ghc.HsDo ann t (Ghc.L l2 s)) =
-  let addCol = \case
-        Ghc.EpaDelta (Ghc.DifferentLine r c) a ->
-          Ghc.EpaDelta (Ghc.DifferentLine r (c + 1)) a
-        x -> x
-   in Ghc.HsDo ann t (Ghc.L l2 {Ghc.entry = addCol (Ghc.entry l2)} s)
-doIndentCorrect x = x
-#else
-#endif
-
-nameToBS :: Ghc.HasOccName a => a -> BS.ByteString
-nameToBS = Ghc.bytesFS . Ghc.occNameFS . Ghc.occName
-
 rewriteToLet :: Ghc.ParsedResult -> Ghc.ParsedResult
 rewriteToLet result =
   let prm = Ghc.parsedResultModule result in result
@@ -204,140 +158,6 @@ rewriteToLet result =
     appCase = \case
       ExtractPat bnd body -> mkRewrittenLet bnd body
       x -> x
-
--- | Custom scheme that allows a transformation to inspect the context within
--- a bottom up traversal.
-everywhereCtx
-  :: forall w. Monoid w
-  => (w -> Syb.GenericM (W.Writer w))
-  -> Syb.GenericM (W.Writer w)
-everywhereCtx f = go where
-  go :: Syb.GenericM (W.Writer w)
-  go x = do
-    (x', w) <- W.listen $ Syb.gmapM go x
-    f w x'
-
-performExtractions
-  :: Ghc.TcGblEnv
-  -> Ghc.HsGroup Ghc.GhcRn
-  -> ([(Ghc.Name, [Ghc.Name])], Ghc.HsGroup Ghc.GhcRn)
-performExtractions gblEnv grp =
-  case Ghc.hs_valds grp of
-    Ghc.XValBindsLR (Ghc.NValBinds bndTups sigs)
-      | let extracted = bndExtract <$> bndTups ->
-        ( foldMap snd extracted
-        , grp
-          { Ghc.hs_valds = Ghc.XValBindsLR (Ghc.NValBinds (fst <$> extracted) sigs) }
-        )
-    _ -> ([], grp)
-  where
-    bndExtract
-      :: (Ghc.RecFlag, Ghc.LHsBinds Ghc.GhcRn)
-      -> ((Ghc.RecFlag, Ghc.LHsBinds Ghc.GhcRn), [(Ghc.Name, [Ghc.Name])])
-    bndExtract (_, bnds) =
-      let (newBnds, newNames) = foldMap extract bnds
-       in ((Ghc.Recursive, IsList.fromList newBnds), newNames)
-
-    extract :: Ghc.LHsBind Ghc.GhcRn -> ([Ghc.LHsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])])
-    extract (Ghc.L loc bind) =
-      let (updated, (newBinds, newNames)) = W.runWriter $
-            everywhereCtx
-              (\w ->
-                let newDeclNames = fst <$> snd w
-                 in Syb.mkM (rewriteAndExtract newDeclNames) `Syb.extM` addFVs newDeclNames
-              )
-              bind
-          rewriteAndExtract
-            :: [Ghc.Name]
-            -> Ghc.HsExpr Ghc.GhcRn
-            -> W.Writer ([Ghc.HsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])]) (Ghc.HsExpr Ghc.GhcRn)
-          rewriteAndExtract newDeclNames = \case
-            ExtractionLetExpr freeVars bndName grhss
-              | Just occNameBS <- BS.stripSuffix "_EXTRACT" $ nameToBS bndName
-              -> let args = Ghc.nameSetElemsStable
-                          . Ghc.delFVs newDeclNames
-                          $ freeVars `Ghc.minusNameSet` topLevelNames
-                     topLvlName = Ghc.tidyNameOcc bndName (Ghc.mkVarOccFS $ Ghc.mkFastStringByteString occNameBS)
-                     newBind = mkExtractionBind freeVars topLvlName args grhss
-                     newExpr =
-                       foldl'
-                         (\acc arg ->
-                           Ghc.HsApp
-#if MIN_VERSION_ghc(9,10,0)
-                             Ghc.noExtField
-#else
-                             Ghc.noComments
-#endif
-                             (Ghc.noLocA acc)
-                             (Ghc.noLocA $ Ghc.HsVar Ghc.noExtField (Ghc.noLocA arg)))
-                         (Ghc.HsVar Ghc.noExtField (Ghc.noLocA topLvlName))
-                         args
-                  in W.writer (newExpr, ([newBind], [(topLvlName, args)]))
-
-            x -> pure x
-
-          addFVs :: Monad m
-                 => [Ghc.Name]
-                 -> Ghc.HsBind Ghc.GhcRn
-                 -> m (Ghc.HsBind Ghc.GhcRn)
-          addFVs newDeclNames = \case
-                Ghc.FunBind fvs a b ->
-                  pure $ Ghc.FunBind (Ghc.extendNameSetList fvs newDeclNames) a b
-#if MIN_VERSION_ghc(9,10,0)
-                Ghc.PatBind fvs a b c ->
-                  pure $ Ghc.PatBind (Ghc.extendNameSetList fvs newDeclNames) a b c
-#else
-                Ghc.PatBind fvs a b ->
-                  pure $ Ghc.PatBind (Ghc.extendNameSetList fvs newDeclNames) a b
-#endif
-                x -> pure x
-
-       in (Ghc.L loc updated : (Ghc.noLocA <$> reverse newBinds), newNames)
-
-    topLevelNames :: Ghc.NameSet
-    topLevelNames = foldMap (fold . fst) $ Ghc.tcg_dus gblEnv
-
--- When modifying parser input, convert EXTRACT@foo to foo_EXTRACT
-modifyParsedDecls :: ExtractedDecls -> [Ghc.LHsDecl Ghc.GhcPs] -> [Ghc.LHsDecl Ghc.GhcPs]
-modifyParsedDecls extrDecls = foldMap go
-  where
-    go decl =
-      let (updDecl, newDecls) = W.runWriter $ Syb.everywhereM (Syb.mkM extract) decl
-       in updDecl : newDecls
-    extract :: Ghc.HsExpr Ghc.GhcPs -> W.Writer [Ghc.LHsDecl Ghc.GhcPs] (Ghc.HsExpr Ghc.GhcPs)
-    extract = \case
-      ExtractPat bnd body
-        | Just inputs <- Map.lookup (Ghc.bytesFS bnd) extrDecls
-        -> decls bnd body inputs
-      x -> pure x
-
-    decls :: Ghc.FastString -> Ghc.LHsExpr Ghc.GhcPs -> Extraction -> W.Writer [Ghc.LHsDecl Ghc.GhcPs] (Ghc.HsExpr Ghc.GhcPs)
-    decls bnd body inputs =
-      let rdrName = Ghc.mkRdrUnqual $ Ghc.mkVarOccFS bnd
-          arNames = Ghc.L Ghc.anchorD1 . Ghc.mkRdrUnqual <$> argNames inputs
-          callsite = foldl'
-            (\acc arg ->
-#if MIN_VERSION_ghc(9,10,0)
-              Ghc.HsApp
-                Ghc.noExtField
-                (Ghc.noLocA acc)
-                (Ghc.L Ghc.noAnn $ Ghc.HsVar Ghc.noExtField arg)
-#else
-              Ghc.HsApp
-                Ghc.noComments
-                (Ghc.noLocA acc)
-                (Ghc.L Ghc.noSrcSpanA $ Ghc.HsVar Ghc.noExtField arg)
-#endif
-            )
-            (Ghc.HsVar Ghc.noExtField $ Ghc.noLocA rdrName)
-            arNames
-          newDecl :: Ghc.LHsDecl Ghc.GhcPs
-          newDecl = mkExtractionDecl rdrName body arNames
-          mSig :: Maybe (Ghc.LHsDecl Ghc.GhcPs)
-          mSig = do
-            hsType <- extractedType inputs
-            Just $ mkExtractionSig rdrName hsType
-       in W.writer (callsite, maybe id (:) mSig [newDecl])
 
 -- | Parse the given module file. Accounts for CPP comments
 parseModule
