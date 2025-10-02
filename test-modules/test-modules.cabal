@@ -56,3 +56,7 @@ executable Case10a
 executable Case10b
     import: attrs
     main-is: Case10b.hs
+
+executable Case11
+    import: attrs
+    main-is: Case11.hs

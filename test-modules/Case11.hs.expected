@@ -1,0 +1,8 @@
+module Case11 where
+
+import qualified Data.Functor.Identity as Id
+
+test x = let y = Id.Identity 12 in 1 + simple x y
+
+simple :: Num a => a -> Id.Identity a -> a
+simple x y = x + 3 * Id.runIdentity y

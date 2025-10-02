@@ -1,0 +1,5 @@
+module Case11 where
+
+import qualified Data.Functor.Identity as Id
+
+test x = let y = Id.Identity 12 in 1 + EXTRACT@simple (x + 3 * Id.runIdentity y)

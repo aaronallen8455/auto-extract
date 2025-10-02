@@ -23,10 +23,10 @@ library
                    AutoExtract.Parser
     -- other-extensions:
     build-depends:    base,
-                      ghc,
+                      ghc >= 9.6 && < 9.13,
                       containers,
                       syb,
-                      bytestring,
+                      bytestring < 0.13,
                       ghc-exactprint,
                       ghc-paths,
                       transformers

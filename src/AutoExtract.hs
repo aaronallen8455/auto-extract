@@ -88,6 +88,8 @@ mkInnerPlugin hscEnv extractedNamesRef = Ghc.defaultPlugin
   , Ghc.typeCheckResultAction = \_ tcModSum gblEnv -> do
       extractedNames <- liftIO $ readIORef extractedNamesRef
       let dynFlags = Ghc.ms_hspp_opts tcModSum `Ghc.gopt_set` Ghc.Opt_KeepRawTokenStream
+          unitEnv = Ghc.hsc_unit_env hscEnv
+          namePprCtx = Ghc.mkNamePprCtx (Ghc.initPromotionTickContext dynFlags) unitEnv (Ghc.tcg_rdr_env gblEnv)
       extractionParams <- Map.mapKeys nameToBS <$>
         Map.traverseWithKey
           (\nm args -> do
@@ -95,9 +97,11 @@ mkInnerPlugin hscEnv extractedNamesRef = Ghc.defaultPlugin
             -- Converting Type to HsType would be tedious so instead we
             -- pretty print the Type and run it through the type parser.
             let tySDoc = Ghc.pprSigmaType ty
-                sdocCtxt = (Ghc.initDefaultSDocContext dynFlags)
-                  { Ghc.sdocLineLength = 5000 }
-                tyStr = Ghc.renderWithContext sdocCtxt tySDoc
+                tyStr = Ghc.showSDocForUser
+                          dynFlags { Ghc.pprCols = 5000 }
+                          (Ghc.hsc_units hscEnv)
+                          namePprCtx
+                          tySDoc
                 mHsTy = either (const Nothing) (Just . EP.makeDeltaAst)
                       $ EP.parseType dynFlags "" tyStr
             pure Extraction

@@ -16,7 +16,7 @@ import           GHC.Types.Error as Ghc
 import           GHC.Driver.Pipeline.Phases as Ghc
 import           GHC.Driver.Pipeline.Execute as Ghc
 import           GHC.Types.SourceError as Ghc
-import           GHC.Driver.Env.Types as Ghc
+import           GHC.Driver.Env as Ghc
 import           GHC.Driver.Hooks as Ghc
 import           GHC.Types.Name as Ghc
 import           GHC.Types.Name.Reader as Ghc
@@ -28,6 +28,8 @@ import           GHC.Tc.Utils.Env as Ghc
 import           GHC.Core.TyCo.Ppr as Ghc
 import           GHC.Utils.Error as Ghc
 import           GHC.Types.SrcLoc as Ghc
+import           GHC.Driver.Ppr as Ghc
+import           GHC.Types.Name.Ppr as Ghc
 #if MIN_VERSION_ghc(9,8,0)
 import           GHC.Driver.DynFlags as Ghc
 #else
