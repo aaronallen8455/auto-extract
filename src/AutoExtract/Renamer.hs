@@ -31,9 +31,11 @@ performExtractions gblEnv grp =
     bndExtract
       :: (Ghc.RecFlag, Ghc.LHsBinds Ghc.GhcRn)
       -> ((Ghc.RecFlag, Ghc.LHsBinds Ghc.GhcRn), [(Ghc.Name, [Ghc.Name])])
-    bndExtract (_, bnds) =
+    bndExtract inp@(_, bnds) =
       let (newBnds, newNames) = foldMap extract bnds
-       in ((Ghc.Recursive, IsList.fromList newBnds), newNames)
+       in if null newNames
+          then (inp, [])
+          else ((Ghc.Recursive, IsList.fromList newBnds), newNames)
 
     extract :: Ghc.LHsBind Ghc.GhcRn -> ([Ghc.LHsBind Ghc.GhcRn], [(Ghc.Name, [Ghc.Name])])
     extract (Ghc.L loc bind) =

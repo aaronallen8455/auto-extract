@@ -25,6 +25,7 @@ main = defaultMain $ testGroup "Tests"
     , testCase "10b" $ runTest "Case10b.hs" -- 9.10 indentation issue
 #endif
     , testCase "11" $ runTest "Case11.hs"
+    , testCase "12" $ runTest "Case12.hs"
     ]
   ]
 

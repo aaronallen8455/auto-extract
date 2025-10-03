@@ -1,0 +1,7 @@
+{-# LANGUAGE PatternSynonyms #-}
+module Case12 where
+
+pattern Test :: ()
+pattern Test = ()
+
+test x = EXTRACT@simple (x + 3)

@@ -1,0 +1,649 @@
+
+(HsGroup
+ (NoExtField)
+ (XValBindsLR
+  (NValBinds
+   [((,)
+     (Recursive)
+     [(L
+       (EpAnn
+        (EpaSpan { 5:1-82 })
+        (AnnListItem
+         [])
+        (EpaComments
+         []))
+       (FunBind
+        {NameSet:
+         [{Name: simple_aF2}]}
+        (L
+         (EpAnn
+          (EpaSpan { 5:1-4 })
+          (NameAnnTrailing
+           [])
+          (EpaComments
+           []))
+         {Name: test})
+        (MG
+         (FromSource)
+         (L
+          (EpAnn
+           (EpaSpan { 5:1-82 })
+           (AnnList
+            (Nothing)
+            (ListNone)
+            []
+            (NoEpTok)
+            [])
+           (EpaComments
+            []))
+          [(L
+            (EpAnn
+             (EpaSpan { 5:1-82 })
+             (AnnListItem
+              [])
+             (EpaComments
+              []))
+            (Match
+             (NoExtField)
+             (FunRhs
+              (L
+               (EpAnn
+                (EpaSpan { 5:1-4 })
+                (NameAnnTrailing
+                 [])
+                (EpaComments
+                 []))
+               {Name: test})
+              (Prefix)
+              (NoSrcStrict)
+              (AnnFunRhs
+               (NoEpTok)
+               []
+               []))
+             (L
+              (EpaSpan { 5:6 })
+              [(L
+                (EpAnn
+                 (EpaSpan { 5:6 })
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (VarPat
+                 (NoExtField)
+                 (L
+                  (EpAnn
+                   (EpaSpan { 5:6 })
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  {Name: x_aCo})))])
+             (GRHSs
+              (EpaComments
+               [])
+              [(L
+                (EpAnn
+                 (EpaSpan { 5:8-82 })
+                 (NoEpAnns)
+                 (EpaComments
+                  []))
+                (GRHS
+                 (EpAnn
+                  (EpaDelta { <no location info> } (SameLine 0) [])
+                  (GrhsAnn
+                   (Nothing)
+                   (Left
+                    (NoEpTok)))
+                  (EpaComments
+                   []))
+                 []
+                 (L
+                  (EpAnn
+                   (EpaSpan { 5:10-82 })
+                   (AnnListItem
+                    [])
+                   (EpaComments
+                    []))
+                  (HsLet
+                   (NoExtField)
+                   (HsValBinds
+                    (EpAnn
+                     (EpaSpan { 5:14-31 })
+                     (AnnList
+                      (Just
+                       (EpaSpan { 5:14-31 }))
+                      (ListNone)
+                      []
+                      (NoEpTok)
+                      [])
+                     (EpaComments
+                      []))
+                    (XValBindsLR
+                     (NValBinds
+                      [((,)
+                        (NonRecursive)
+                        [(L
+                          (EpAnn
+                           (EpaSpan { 5:14-31 })
+                           (AnnListItem
+                            [])
+                           (EpaComments
+                            []))
+                          (FunBind
+                           {NameSet:
+                            []}
+                           (L
+                            (EpAnn
+                             (EpaSpan { 5:14 })
+                             (NameAnnTrailing
+                              [])
+                             (EpaComments
+                              []))
+                            {Name: y_aCp})
+                           (MG
+                            (FromSource)
+                            (L
+                             (EpAnn
+                              (EpaSpan { 5:14-31 })
+                              (AnnList
+                               (Nothing)
+                               (ListNone)
+                               []
+                               (NoEpTok)
+                               [])
+                              (EpaComments
+                               []))
+                             [(L
+                               (EpAnn
+                                (EpaSpan { 5:14-31 })
+                                (AnnListItem
+                                 [])
+                                (EpaComments
+                                 []))
+                               (Match
+                                (NoExtField)
+                                (FunRhs
+                                 (L
+                                  (EpAnn
+                                   (EpaSpan { 5:14 })
+                                   (NameAnnTrailing
+                                    [])
+                                   (EpaComments
+                                    []))
+                                  {Name: y_aCp})
+                                 (Prefix)
+                                 (NoSrcStrict)
+                                 (AnnFunRhs
+                                  (NoEpTok)
+                                  []
+                                  []))
+                                (L
+                                 (EpaSpan { <no location info> })
+                                 [])
+                                (GRHSs
+                                 (EpaComments
+                                  [])
+                                 [(L
+                                   (EpAnn
+                                    (EpaSpan { 5:16-31 })
+                                    (NoEpAnns)
+                                    (EpaComments
+                                     []))
+                                   (GRHS
+                                    (EpAnn
+                                     (EpaDelta { <no location info> } (SameLine 0) [])
+                                     (GrhsAnn
+                                      (Nothing)
+                                      (Left
+                                       (NoEpTok)))
+                                     (EpaComments
+                                      []))
+                                    []
+                                    (L
+                                     (EpAnn
+                                      (EpaSpan { 5:18-31 })
+                                      (AnnListItem
+                                       [])
+                                      (EpaComments
+                                       []))
+                                     (HsApp
+                                      (NoExtField)
+                                      (L
+                                       (EpAnn
+                                        (EpaSpan { 5:18-28 })
+                                        (AnnListItem
+                                         [])
+                                        (EpaComments
+                                         []))
+                                       (HsVar
+                                        (NoExtField)
+                                        (L
+                                         (EpAnn
+                                          (EpaSpan { 5:18-28 })
+                                          (NameAnnTrailing
+                                           [])
+                                          (EpaComments
+                                           []))
+                                         {Name: Identity})))
+                                      (L
+                                       (EpAnn
+                                        (EpaSpan { 5:30-31 })
+                                        (AnnListItem
+                                         [])
+                                        (EpaComments
+                                         []))
+                                       (HsOverLit
+                                        (NoExtField)
+                                        (OverLit
+                                         (OverLitRn
+                                          (False)
+                                          (L
+                                           (EpAnn
+                                            (EpaSpan { 5:30-31 })
+                                            (NameAnnTrailing
+                                             [])
+                                            (EpaComments
+                                             []))
+                                           {Name: fromInteger}))
+                                         (HsIntegral
+                                          (IL
+                                           (SourceText 12)
+                                           (False)
+                                           (12))))))))))]
+                                 (EmptyLocalBinds
+                                  (NoExtField)))))]))))])]
+                      [])))
+                   (L
+                    (EpAnn
+                     (EpaSpan { 5:36-82 })
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (OpApp
+                     (Fixity
+                      (6)
+                      (InfixL))
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:36 })
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsOverLit
+                       (NoExtField)
+                       (OverLit
+                        (OverLitRn
+                         (False)
+                         (L
+                          (EpAnn
+                           (EpaSpan { 5:36 })
+                           (NameAnnTrailing
+                            [])
+                           (EpaComments
+                            []))
+                          {Name: fromInteger}))
+                        (HsIntegral
+                         (IL
+                          (SourceText 1)
+                          (False)
+                          (1))))))
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:38 })
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsVar
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaSpan { 5:38 })
+                         (NameAnnTrailing
+                          [])
+                         (EpaComments
+                          []))
+                        {Name: +})))
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:40-82 })
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsApp
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaSpan { <no location info> })
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (HsApp
+                         (NoExtField)
+                         (L
+                          (EpAnn
+                           (EpaSpan { <no location info> })
+                           (AnnListItem
+                            [])
+                           (EpaComments
+                            []))
+                          (HsVar
+                           (NoExtField)
+                           (L
+                            (EpAnn
+                             (EpaSpan { <no location info> })
+                             (NameAnnTrailing
+                              [])
+                             (EpaComments
+                              []))
+                            {Name: simple_aF2})))
+                         (L
+                          (EpAnn
+                           (EpaSpan { <no location info> })
+                           (AnnListItem
+                            [])
+                           (EpaComments
+                            []))
+                          (HsVar
+                           (NoExtField)
+                           (L
+                            (EpAnn
+                             (EpaSpan { <no location info> })
+                             (NameAnnTrailing
+                              [])
+                             (EpaComments
+                              []))
+                            {Name: x_aCo})))))
+                       (L
+                        (EpAnn
+                         (EpaSpan { <no location info> })
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (HsVar
+                         (NoExtField)
+                         (L
+                          (EpAnn
+                           (EpaSpan { <no location info> })
+                           (NameAnnTrailing
+                            [])
+                           (EpaComments
+                            []))
+                          {Name: y_aCp})))))))))))]
+              (EmptyLocalBinds
+               (NoExtField)))))]))))
+     ,(L
+       (EpAnn
+        (EpaSpan { <no location info> })
+        (AnnListItem
+         [])
+        (EpaComments
+         []))
+       (FunBind
+        {NameSet:
+         [{Name: x_aCo}
+         ,{Name: y_aCp}]}
+        (L
+         (EpAnn
+          (EpaSpan { <no location info> })
+          (NameAnnTrailing
+           [])
+          (EpaComments
+           []))
+         {Name: simple_aF2})
+        (MG
+         (FromSource)
+         (L
+          (EpAnn
+           (EpaSpan { <no location info> })
+           (AnnList
+            (Nothing)
+            (ListNone)
+            []
+            (NoEpTok)
+            [])
+           (EpaComments
+            []))
+          [(L
+            (EpAnn
+             (EpaSpan { <no location info> })
+             (AnnListItem
+              [])
+             (EpaComments
+              []))
+            (Match
+             (NoExtField)
+             (FunRhs
+              (L
+               (EpAnn
+                (EpaSpan { <no location info> })
+                (NameAnnTrailing
+                 [])
+                (EpaComments
+                 []))
+               {Name: simple_aF2})
+              (Prefix)
+              (SrcLazy)
+              (AnnFunRhs
+               (NoEpTok)
+               []
+               []))
+             (L
+              (EpaSpan { <no location info> })
+              [(L
+                (EpAnn
+                 (EpaSpan { <no location info> })
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (VarPat
+                 (NoExtField)
+                 (L
+                  (EpAnn
+                   (EpaSpan { <no location info> })
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  {Name: x_aCo})))
+              ,(L
+                (EpAnn
+                 (EpaSpan { <no location info> })
+                 (AnnListItem
+                  [])
+                 (EpaComments
+                  []))
+                (VarPat
+                 (NoExtField)
+                 (L
+                  (EpAnn
+                   (EpaSpan { <no location info> })
+                   (NameAnnTrailing
+                    [])
+                   (EpaComments
+                    []))
+                  {Name: y_aCp})))])
+             (GRHSs
+              (EpaComments
+               [])
+              [(L
+                (EpAnn
+                 (EpaSpan { <no location info> })
+                 (NoEpAnns)
+                 (EpaComments
+                  []))
+                (GRHS
+                 (EpAnn
+                  (EpaDelta { <no location info> } (SameLine 0) [])
+                  (GrhsAnn
+                   (Nothing)
+                   (Left
+                    (NoEpTok)))
+                  (EpaComments
+                   []))
+                 []
+                 (L
+                  (EpAnn
+                   (EpaSpan { 5:57-82 })
+                   (AnnListItem
+                    [])
+                   (EpaComments
+                    []))
+                  (OpApp
+                   (Fixity
+                    (6)
+                    (InfixL))
+                   (L
+                    (EpAnn
+                     (EpaSpan { 5:58 })
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (HsVar
+                     (NoExtField)
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:58 })
+                       (NameAnnTrailing
+                        [])
+                       (EpaComments
+                        []))
+                      {Name: x_aCo})))
+                   (L
+                    (EpAnn
+                     (EpaSpan { 5:60 })
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (HsVar
+                     (NoExtField)
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:60 })
+                       (NameAnnTrailing
+                        [])
+                       (EpaComments
+                        []))
+                      {Name: +})))
+                   (L
+                    (EpAnn
+                     (EpaSpan { 5:62-81 })
+                     (AnnListItem
+                      [])
+                     (EpaComments
+                      []))
+                    (OpApp
+                     (Fixity
+                      (7)
+                      (InfixL))
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:62 })
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsOverLit
+                       (NoExtField)
+                       (OverLit
+                        (OverLitRn
+                         (False)
+                         (L
+                          (EpAnn
+                           (EpaSpan { 5:62 })
+                           (NameAnnTrailing
+                            [])
+                           (EpaComments
+                            []))
+                          {Name: fromInteger}))
+                        (HsIntegral
+                         (IL
+                          (SourceText 3)
+                          (False)
+                          (3))))))
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:64 })
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsVar
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaSpan { 5:64 })
+                         (NameAnnTrailing
+                          [])
+                         (EpaComments
+                          []))
+                        {Name: *})))
+                     (L
+                      (EpAnn
+                       (EpaSpan { 5:66-81 })
+                       (AnnListItem
+                        [])
+                       (EpaComments
+                        []))
+                      (HsApp
+                       (NoExtField)
+                       (L
+                        (EpAnn
+                         (EpaSpan { 5:66-79 })
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (XExpr
+                         (HsRecSelRn
+                          (FieldOcc
+                           (Qual
+                            {ModuleName: Id}
+                            {OccName: runIdentity})
+                           (L
+                            (EpAnn
+                             (EpaSpan { 5:66-79 })
+                             (NameAnnTrailing
+                              [])
+                             (EpaComments
+                              []))
+                            {Name: runIdentity})))))
+                       (L
+                        (EpAnn
+                         (EpaSpan { 5:81 })
+                         (AnnListItem
+                          [])
+                         (EpaComments
+                          []))
+                        (HsVar
+                         (NoExtField)
+                         (L
+                          (EpAnn
+                           (EpaSpan { 5:81 })
+                           (NameAnnTrailing
+                            [])
+                           (EpaComments
+                            []))
+                          {Name: y_aCp})))))))))))]
+              (EmptyLocalBinds
+               (NoExtField)))))]))))])]
+   []))
+ []
+ []
+ []
+ []
+ []
+ []
+ []
+ []
+ []
+ [])

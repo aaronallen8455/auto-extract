@@ -1,0 +1,10 @@
+{-# LANGUAGE PatternSynonyms #-}
+module Case12 where
+
+pattern Test :: ()
+pattern Test = ()
+
+test x = simple x
+
+simple :: Num a => a -> a
+simple x = x + 3
