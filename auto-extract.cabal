@@ -3,6 +3,8 @@ name:               auto-extract
 version:            0.1.0.0
 license:            BSD-3-Clause
 license-file:       LICENSE
+synopsis:           Extract code segment to top level function
+description:        Extract code segment to top level function using a GHC plugin
 author:             Aaron Allen
 maintainer:         aaronallen8455@gmail.com
 category:           Development
@@ -10,6 +12,10 @@ build-type:         Simple
 extra-doc-files:    CHANGELOG.md
                     README.md
 tested-with: GHC == 9.12.1, GHC == 9.10.1, GHC == 9.8.1, GHC == 9.6.1
+
+source-repository head
+  type: git
+  location: https://github.com/aaronallen8455/auto-extract
 
 common warnings
     ghc-options: -Wall
@@ -22,7 +28,7 @@ library
                    AutoExtract.Renamer
                    AutoExtract.Parser
     -- other-extensions:
-    build-depends:    base,
+    build-depends:    base < 5,
                       ghc >= 9.6 && < 9.13,
                       containers,
                       syb,
